@@ -15,6 +15,18 @@ Edit `src/data/collections.ts`. Point each `Photo.src` at a file in `public/phot
 
 Each collection can hold ~50 photographs. Only a sliding window around the current slide is decoded (2 previous + 5 upcoming).
 
+## 3D models
+
+`models-src/` holds the raw models. `public/models/` holds the compressed versions the app actually loads, and those are generated — don't edit them by hand.
+
+```bash
+npm run models
+```
+
+This resizes textures to WebP, strips unused vertex attributes, and applies Meshopt compression, taking the set from 25 MB to 2.2 MB. Drop a replacement in `models-src/`, add it to the `MODELS` list in `scripts/optimize-models.mjs` with a texture budget, and re-run.
+
+The pipeline deliberately leaves mesh, node and material merging off, because scene code identifies parts by name — `WindowCurtains` matches meshes against `/fabric/i` and `Bed` matches materials against `/beizi/i`.
+
 ## Sounds
 
 Mechanical audio is synthesized. To replace it, add WAV files:
