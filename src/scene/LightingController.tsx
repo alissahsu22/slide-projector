@@ -29,10 +29,18 @@ const CEIL_PLAYBACK = 0.06;
 
 // Camera-side fill — magazines face +Z, so the overhead panel leaves the
 // printed spines in their own shadow. This lifts the crate without flattening
-// the rest of the room.
+// the rest of the room. It has to sit in front of the crate to reach the
+// labels, which puts it under half a metre from the front wall, so it is a spot
+// aimed back down at the crate: a point light here blows a hotspot on the
+// plaster behind it.
 const TABLE_FILL_COLOR = '#ffc890';
 const TABLE_FILL_CATALOG = 0.72;
 const TABLE_FILL_PLAYBACK = 0.02;
+/** Wide enough to cover the full row of spines, with only a soft edge falloff. */
+const TABLE_FILL_ANGLE = 0.85;
+const TABLE_FILL_PENUMBRA = 0.55;
+/** Aim point: the crate's label height, not the tabletop. */
+const TABLE_FILL_AIM_Y = TABLE_TOP + 0.1;
 
 // Projector lens point — warm amber, important but not room-dominating in playback
 const LAMP_COLOR = '#ffc060';
@@ -42,9 +50,16 @@ const LAMP_SCALE = 1.15;
 const LED_COLOR = '#ff1e12';
 const LED_IDLE = 0.04;
 
-// Screen content bounce onto nearby ceiling surfaces
+// Screen content bounce onto nearby ceiling surfaces. Aimed straight up as a
+// spot rather than a point, so the pool lands on the plaster without washing
+// out the projected photo on the wall below it.
 const SCREEN_BOUNCE_COLOR = '#e8d8c0';
 const SCREEN_BOUNCE_SCALE = 0.52;
+/** Below the ceiling: the plane is single sided and faces down, so a light
+ * above it lights nothing. */
+const SCREEN_BOUNCE_DROP = 0.5;
+/** Out from the wall — the brightest bounce is on the plaster above the screen. */
+const SCREEN_BOUNCE_OUT = 0.6;
 
 // Warm floor/wall spill beneath the projected wall — playback only
 const TABLE_SPILL_COLOR = '#f2ca88';
@@ -73,11 +88,13 @@ export function LightingController() {
   const hemi = useRef<THREE.HemisphereLight>(null);
   const ceil = useRef<THREE.SpotLight>(null);
   const ceilTarget = useRef<THREE.Object3D>(null);
-  const tableFill = useRef<THREE.PointLight>(null);
+  const tableFill = useRef<THREE.SpotLight>(null);
+  const tableFillTarget = useRef<THREE.Object3D>(null);
   const amb = useRef<THREE.AmbientLight>(null);
   const lamp = useRef<THREE.PointLight>(null);
   const led = useRef<THREE.PointLight>(null);
-  const screenBounce = useRef<THREE.PointLight>(null);
+  const screenBounce = useRef<THREE.SpotLight>(null);
+  const screenBounceTarget = useRef<THREE.Object3D>(null);
   const tableSpill = useRef<THREE.PointLight>(null);
 
   useFrame(() => {
@@ -120,6 +137,10 @@ export function LightingController() {
         TABLE_FILL_CATALOG,
         room,
       );
+      if (tableFillTarget.current) {
+        tableFill.current.target = tableFillTarget.current;
+        tableFill.current.target.updateMatrixWorld();
+      }
     }
 
     if (amb.current) {
@@ -138,6 +159,10 @@ export function LightingController() {
 
     if (screenBounce.current) {
       screenBounce.current.intensity = visuals.projection * throwLevel() * SCREEN_BOUNCE_SCALE;
+      if (screenBounceTarget.current) {
+        screenBounce.current.target = screenBounceTarget.current;
+        screenBounce.current.target.updateMatrixWorld();
+      }
     }
 
     if (tableSpill.current) {
@@ -167,13 +192,19 @@ export function LightingController() {
       />
       <object3D ref={ceilTarget} position={[CEILING_PANEL.x, 0, CEILING_PANEL.z]} />
 
-      <pointLight
+      <spotLight
         ref={tableFill}
         position={[CRATE_POS.x, TABLE_TOP + 0.48, CRATE_POS.z + 0.62]}
         color={TABLE_FILL_COLOR}
         intensity={TABLE_FILL_CATALOG}
         distance={2.6}
+        angle={TABLE_FILL_ANGLE}
+        penumbra={TABLE_FILL_PENUMBRA}
         decay={1.7}
+      />
+      <object3D
+        ref={tableFillTarget}
+        position={[CRATE_POS.x, TABLE_FILL_AIM_Y, CRATE_POS.z]}
       />
 
       <pointLight
@@ -194,13 +225,19 @@ export function LightingController() {
         decay={2}
       />
 
-      <pointLight
+      <spotLight
         ref={screenBounce}
-        position={[SCREEN.x, SCREEN.y + 0.95, SCREEN.z + 0.7]}
+        position={[SCREEN.x, ROOM_H - SCREEN_BOUNCE_DROP, SCREEN.z + SCREEN_BOUNCE_OUT]}
         color={SCREEN_BOUNCE_COLOR}
         intensity={0}
         distance={2.8}
-        decay={2}
+        angle={1.15}
+        penumbra={1}
+        decay={1.4}
+      />
+      <object3D
+        ref={screenBounceTarget}
+        position={[SCREEN.x, ROOM_H, SCREEN.z + SCREEN_BOUNCE_OUT]}
       />
 
       <pointLight

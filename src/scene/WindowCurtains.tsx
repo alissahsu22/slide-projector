@@ -11,8 +11,10 @@ const WIDTH_EXTRA = 0.35;
 const ROD_ABOVE = 0.1;
 /** How far the hem hangs past the sill. */
 const SILL_OVERHANG = 0.08;
-/** Gap from the wall plane to the back of the curtains. */
-const FROM_WALL = 0.07;
+/** Gap from the wall plane to the back of the curtains; must clear the window frame. */
+const FROM_WALL = 0.06;
+/** Flattens the folds so the panels hug the wall instead of bulging into the room. */
+const DEPTH_SQUASH = 0.45;
 const FABRIC_PINK = new THREE.Color('#e8a8bc');
 
 useGLTF.preload(CURTAIN_URL);
@@ -54,7 +56,7 @@ export function WindowCurtains() {
     const size = raw.getSize(new THREE.Vector3());
     const sx = (WINDOW_W + WIDTH_EXTRA) / (size.x || 1);
     const sy = (WINDOW_H + ROD_ABOVE + SILL_OVERHANG) / (size.y || 1);
-    group.scale.set(sx, sy, sx);
+    group.scale.set(sx, sy, sx * DEPTH_SQUASH);
     // Same yaw as the window: fabric faces into the room, rod along the wall.
     group.rotation.y = Math.PI / 2;
 

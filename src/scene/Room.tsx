@@ -3,7 +3,7 @@ import { type ReactNode, Suspense, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import type { MeshStandardMaterial } from 'three';
 import { WALL_Z } from '../experience/layout';
-import { visuals } from '../experience/visuals';
+import { throwLevel, visuals } from '../experience/visuals';
 import { setCrateSelected } from '../state/store';
 import { Bed } from './Bed';
 import { Carpet } from './Carpet';
@@ -180,12 +180,16 @@ function BackWall({ map }: { map: THREE.Texture }) {
 /**
  * The ceiling faces down, so the hemisphere light hands it the dark ground
  * tone and the panel misses it. A faint emissive keeps the mural readable
- * without flattening the overhead pool.
+ * without flattening the overhead pool. During playback the room lights are
+ * out and the screen bounce is all it gets, so the mural carries a little glow
+ * of its own to stay legible.
  */
 function Ceiling({ map }: { map: THREE.Texture }) {
   const mat = useRef<MeshStandardMaterial>(null);
   useFrame(() => {
-    if (mat.current) mat.current.emissiveIntensity = visuals.roomLight * 0.012;
+    if (!mat.current) return;
+    mat.current.emissiveIntensity =
+      visuals.roomLight * 0.012 + visuals.projection * throwLevel() * 0.05;
   });
   return (
     <mesh
@@ -200,7 +204,9 @@ function Ceiling({ map }: { map: THREE.Texture }) {
         emissiveMap={map}
         emissive="#ffffff"
         emissiveIntensity={0}
-        roughness={1}
+        // Not flat matte: a little sheen lets the bounce pool read as light on
+        // plaster rather than a uniform lift in brightness.
+        roughness={0.62}
         color="#ffffff"
       />
     </mesh>
