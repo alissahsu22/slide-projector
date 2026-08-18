@@ -1,7 +1,7 @@
 import { WALL_Z } from '../experience/layout';
 
 /** Single source of truth for the room shell so every surface shares its edges. */
-export const ROOM_HALF_W = 2.25;
+export const ROOM_HALF_W = 2.6;
 export const ROOM_FRONT_Z = 1.5;
 export const ROOM_H = 2.6;
 export const ROOM_W = ROOM_HALF_W * 2;

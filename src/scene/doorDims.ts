@@ -4,7 +4,7 @@ import { WALL_Z } from '../experience/layout';
 export const DOOR = {
   url: '/models/old_door.glb',
   /** World X of the opening center. */
-  x: 1.08,
+  x: 1.95,
   /** Fitted height in metres, leaving a transom of wallpaper above. */
   height: 2.14,
   /** Inner opening the wall is cut to; the frame overlaps the cut. */

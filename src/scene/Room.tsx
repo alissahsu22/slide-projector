@@ -280,7 +280,7 @@ function WindowFrame() {
 
 function Outlet() {
   return (
-    <group position={[1.98, 0.38, WALL_Z + 0.02]}>
+    <group position={[2.48, 0.38, WALL_Z + 0.02]}>
       <mesh>
         <boxGeometry args={[0.07, 0.11, 0.012]} />
         <meshStandardMaterial color="#c4b8a8" roughness={0.7} />

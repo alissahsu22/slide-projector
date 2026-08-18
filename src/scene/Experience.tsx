@@ -35,8 +35,8 @@ export function Experience() {
       }}
       onPointerMissed={() => setCrateSelected(null)}
     >
-      <color attach="background" args={['#120e0a']} />
-      <fog attach="fog" args={['#1a120c', 16, 32]} />
+      <color attach="background" args={['#000000']} />
+      <fog attach="fog" args={['#000000', 16, 32]} />
       <CameraController />
       <LightingController />
       <Room />

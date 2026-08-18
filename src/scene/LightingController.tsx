@@ -51,8 +51,8 @@ const TABLE_SPILL_COLOR = '#f2ca88';
 const TABLE_SPILL_SCALE = 0.32;
 
 // Fog — kept far so the room stays crisp; only a hint in playback for the beam
-const FOG_CATALOG = new THREE.Color('#1a120c');
-const FOG_PLAYBACK = new THREE.Color('#120c08');
+const FOG_CATALOG = new THREE.Color('#000000');
+const FOG_PLAYBACK = new THREE.Color('#000000');
 const FOG_MIX = new THREE.Color();
 const FOG_NEAR_CATALOG = 16;
 const FOG_FAR_CATALOG = 32;
@@ -60,7 +60,7 @@ const FOG_NEAR_PLAYBACK = 7;
 const FOG_FAR_PLAYBACK = 18;
 const FOG_NEAR_ORBIT = 22;
 const FOG_FAR_ORBIT = 48;
-const VOID = new THREE.Color('#120e0a');
+const VOID = new THREE.Color('#000000');
 
 // Tone mapping — catalog bright enough to read spines, darker in playback
 const TM_BASE = 0.5;
