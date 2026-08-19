@@ -1,5 +1,5 @@
 import { useCursor } from '@react-three/drei';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import gsap from 'gsap';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
@@ -7,10 +7,13 @@ import {
   isInteractionLocked,
   setHovered,
 } from '../experience/controller';
+import { isCurationBusy } from '../experience/curation';
+import { beginDrag, dragState, isDragging } from '../experience/drag';
+import { buildHomePlan, writeMagazineHome } from '../experience/homes';
 import {
-  crateSlotWorld,
   MAGAZINE_DOCK_SCALE,
   MAGAZINE_HOVER_LIFT,
+  type MagazinePose,
 } from '../experience/layout';
 import {
   registerCartridge,
@@ -26,11 +29,20 @@ import { SlideMagazine } from './SlideMagazine';
 
 type Props = {
   collection: Collection;
-  index: number;
-  count: number;
 };
 
-export function Cartridge({ collection, index, count }: Props) {
+/** How much of the gap to the home pose is closed per second, roughly. */
+const SETTLE_RATE = 10;
+const DRAG_RATE = 18;
+/** Long moves bow upward, so a magazine crossing the room lifts on the way. */
+const ARC_PER_METER = 0.35;
+const MAX_ARC = 0.05;
+
+const _euler = new THREE.Euler();
+const _quat = new THREE.Quaternion();
+const _world = new THREE.Vector3();
+
+export function Cartridge({ collection }: Props) {
   const group = useRef<THREE.Group>(null);
   const [localHover, setLocalHover] = useState(false);
   const hoveredId = useExperience((s) => s.hoveredId);
@@ -40,11 +52,25 @@ export function Cartridge({ collection, index, count }: Props) {
   const slideIndex = useExperience((s) => s.slideIndex);
   const arrivingId = useExperience((s) => s.arrivingId);
   const deletingId = useExperience((s) => s.deletingId);
+  const inCollection = useExperience((s) => s.collectionIds.includes(collection.id));
   const isDeleting = deletingId === collection.id;
   const slidesRef = useRef<(THREE.Group | null)[]>([]);
-  const startHome = useMemo(() => crateSlotWorld(index, count), [index, count]);
+  const startHome = useMemo<MagazinePose>(() => {
+    const s = getState();
+    return writeMagazineHome(collection.id, buildHomePlan(s), s, {
+      x: 0,
+      y: 0,
+      z: 0,
+      rx: 0,
+      ry: 0,
+      rz: 0,
+    });
+    // Only the mount pose; the frame sync owns it from then on.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [collection.id]);
   const inserting = insertedId === collection.id;
   const arriving = arrivingId === collection.id;
+  const curating = mode === 'CURATING';
   const [fillCount, setFillCount] = useState(arriving ? 0 : collection.photos.length);
   const raisedIndex =
     inserting &&
@@ -55,16 +81,24 @@ export function Cartridge({ collection, index, count }: Props) {
       ? slideIndex
       : -1;
 
+  /** Only crate magazines can be loaded; the shelf is browsed, not played. */
+  const playable = inCollection && !curating;
+  const grabbable = curating && !arriving && !isDeleting;
+  /**
+   * A shelved magazine outside curating is scenery: it lets pointer events
+   * through so the shelf behind it takes the hover and the click.
+   */
+  const interactive = (playable || grabbable) && !arriving && !isDeleting;
+
   const lifted =
-    !arriving &&
-    !isDeleting &&
+    interactive &&
     insertedId !== collection.id &&
     (localHover || hoveredId === collection.id || crateSelectedId === collection.id) &&
     !isTransitional(mode);
 
   useCursor(
-    localHover && !arriving && !isDeleting && insertedId !== collection.id && !isTransitional(mode),
-    'pointer',
+    localHover && interactive && insertedId !== collection.id && !isTransitional(mode),
+    grabbable ? 'grab' : 'pointer',
   );
 
   useLayoutEffect(() => {
@@ -168,29 +202,12 @@ export function Cartridge({ collection, index, count }: Props) {
     };
   }, [isDeleting, collection.id]);
 
-  useEffect(() => {
-    const g = group.current;
-    const handle = sceneApi.cartridges.get(collection.id);
-    if (!g || !handle) return;
-    if (g.userData.arriving) return;
-    if (getState().insertedId === collection.id || g.userData.onInsertionRail) return;
-    gsap.to(g.position, {
-      y: handle.home.y + (lifted ? MAGAZINE_HOVER_LIFT : 0),
-      duration: 0.38,
-      ease: 'power2.out',
-      overwrite: 'auto',
-    });
-    gsap.to(g.rotation, {
-      x: handle.home.rx,
-      y: handle.home.ry,
-      z: handle.home.rz + (lifted ? -0.05 : 0),
-      duration: 0.38,
-      ease: 'power2.out',
-      overwrite: 'auto',
-    });
-  }, [lifted, collection.id]);
-
-  useFrame(() => {
+  /**
+   * One pose to chase, wherever it is. Curating only changes which slot counts
+   * as home, so the shelf-to-crate journey is the same interpolation as the
+   * hover lift — no separate transition to sequence.
+   */
+  useFrame((_, delta) => {
     const g = group.current;
     const handle = sceneApi.cartridges.get(collection.id);
     if (!g || !handle) return;
@@ -205,10 +222,58 @@ export function Cartridge({ collection, index, count }: Props) {
     }
     if (getState().insertedId === collection.id) return;
     if (isTransitional(getState().mode)) return;
-    g.position.x = THREE.MathUtils.lerp(g.position.x, handle.home.x, 0.16);
-    g.position.z = THREE.MathUtils.lerp(g.position.z, handle.home.z, 0.16);
-    if (g.userData.arriving) return;
+
+    const settle = Math.min(1, delta * SETTLE_RATE);
+
+    if (isDragging(collection.id)) {
+      const grab = Math.min(1, delta * DRAG_RATE);
+      g.position.x += (dragState.x - g.position.x) * grab;
+      g.position.y += (dragState.y - g.position.y) * grab;
+      g.position.z += (dragState.z - g.position.z) * grab;
+      _euler.set(handle.home.rx, handle.home.ry, handle.home.rz);
+      g.quaternion.slerp(_quat.setFromEuler(_euler), settle);
+      return;
+    }
+
+    // While the crate is in the air its contents are held, not chased: a soft
+    // follow would let them trail out of the trough on the way across the room.
+    if (isCurationBusy() && !g.userData.arriving && !isDeleting) {
+      g.position.set(handle.home.x, handle.home.y, handle.home.z);
+      _euler.set(handle.home.rx, handle.home.ry, handle.home.rz);
+      g.quaternion.setFromEuler(_euler);
+      return;
+    }
+
+    g.position.x += (handle.home.x - g.position.x) * settle;
+    g.position.z += (handle.home.z - g.position.z) * settle;
+    if (g.userData.arriving || isDeleting) return;
+
+    const travel = Math.hypot(
+      handle.home.x - g.position.x,
+      handle.home.z - g.position.z,
+    );
+    const arc = Math.min(MAX_ARC, travel * ARC_PER_METER);
+    const lift = lifted ? MAGAZINE_HOVER_LIFT : 0;
+    g.position.y += (handle.home.y + lift + arc - g.position.y) * settle;
+    _euler.set(
+      handle.home.rx,
+      handle.home.ry,
+      handle.home.rz + (lifted ? -0.05 : 0),
+    );
+    g.quaternion.slerp(_quat.setFromEuler(_euler), settle);
   });
+
+  function onPointerDown(event: ThreeEvent<PointerEvent>) {
+    if (!interactive) return;
+    event.stopPropagation();
+    // Checked live rather than off the render: the flight ending does not
+    // re-render, so a memoised flag would leave the magazines stuck.
+    if (!grabbable || isCurationBusy()) return;
+    const g = group.current;
+    if (!g) return;
+    g.getWorldPosition(_world);
+    beginDrag(collection.id, _world, event.camera);
+  }
 
   const trayW = magazineLength();
   const trayH = magazineHeight();
@@ -218,20 +283,23 @@ export function Cartridge({ collection, index, count }: Props) {
     <group
       ref={group}
       onPointerOver={(e) => {
+        if (!interactive) return;
         e.stopPropagation();
-        if (arriving || getState().insertedId === collection.id || isTransitional(getState().mode)) return;
+        if (getState().insertedId === collection.id || isTransitional(getState().mode)) return;
         setLocalHover(true);
-        setHovered(collection.id);
+        if (playable) setHovered(collection.id);
       }}
       onPointerOut={(e) => {
+        if (!interactive) return;
         e.stopPropagation();
         setLocalHover(false);
         if (getState().hoveredId === collection.id) setHovered(null);
       }}
-      onPointerDown={(e) => e.stopPropagation()}
+      onPointerDown={onPointerDown}
       onClick={(e) => {
+        if (!playable) return;
         e.stopPropagation();
-        if (arriving || isDeleting || isInteractionLocked()) return;
+        if (isDeleting || isInteractionLocked()) return;
         if (getState().insertedId === collection.id) return;
         setCrateSelected(collection.id);
       }}
@@ -245,9 +313,13 @@ export function Cartridge({ collection, index, count }: Props) {
         date={collection.date}
         photoCount={arriving ? fillCount : collection.photos.length}
         maxVisibleSlides={
-          arriving
-            ? fillCount
-            : Math.min(collection.photos.length, MAGAZINE.slotCount)
+          // Shelved magazines are read by their labels, so they skip the slide
+          // instances entirely — the library is far larger than the crate.
+          !inCollection
+            ? 0
+            : arriving
+              ? fillCount
+              : Math.min(collection.photos.length, MAGAZINE.slotCount)
         }
         photos={collection.photos}
         raisedIndex={raisedIndex}

@@ -1,37 +1,32 @@
-import { useLayoutEffect } from 'react';
-import { crateSlotWorld } from '../experience/layout';
+import { useFrame } from '@react-three/fiber';
+import { buildHomePlan, writeMagazineHome } from '../experience/homes';
 import { sceneApi } from '../experience/sceneApi';
 import { getState, useExperience } from '../state/store';
 import { Cartridge } from './Cartridge';
 
+/**
+ * Every magazine in the library gets one cartridge. Where it stands is decided
+ * by its home pose, rewritten each frame: the curated ones follow the crate,
+ * the rest sit in their own slot on the shelf.
+ */
 export function Cartridges() {
   const collections = useExperience((s) => s.collections);
-  const count = collections.length + 1;
 
-  useLayoutEffect(() => {
-    collections.forEach((collection, index) => {
+  useFrame(() => {
+    const s = getState();
+    const plan = buildHomePlan(s);
+    for (const collection of s.collections) {
       const handle = sceneApi.cartridges.get(collection.id);
-      if (!handle || handle.loose) return;
-      if (getState().insertedId === collection.id) return;
-      const home = crateSlotWorld(index, count);
-      handle.home.x = home.x;
-      handle.home.y = home.y;
-      handle.home.z = home.z;
-      handle.home.rx = home.rx;
-      handle.home.ry = home.ry;
-      handle.home.rz = home.rz;
-    });
-  }, [collections, count]);
+      if (!handle || handle.loose) continue;
+      if (s.insertedId === collection.id) continue;
+      writeMagazineHome(collection.id, plan, s, handle.home);
+    }
+  }, -3);
 
   return (
     <group>
-      {collections.map((collection, index) => (
-        <Cartridge
-          key={collection.id}
-          collection={collection}
-          index={index}
-          count={count}
-        />
+      {collections.map((collection) => (
+        <Cartridge key={collection.id} collection={collection} />
       ))}
     </group>
   );

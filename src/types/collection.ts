@@ -29,6 +29,8 @@ export type Collection = {
 
 export type ExperienceMode =
   | 'CATALOG'
+  /** Shelf and crate side by side, swapping magazines between them. */
+  | 'CURATING'
   | 'INSERTING'
   | 'PLAYING'
   | 'PAUSED'

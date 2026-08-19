@@ -28,6 +28,7 @@ import {
   updateUserCollection,
   type EditPhotoEntry,
 } from '../storage/collectionService';
+import { AlbumLayout, albumSlotCount } from './AlbumLayout';
 
 const MONTHS = [
   'January',
@@ -101,8 +102,10 @@ export function EditMagazineModal() {
 
   const titleId = useId();
   const titleRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const photosRef = useRef<EditDraftPhoto[]>([]);
   const dragIndex = useRef<number | null>(null);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const ignoreBackdropUntil = useRef(0);
   const today = useMemo(() => currentMonthYear(), []);
   const years = useMemo(() => yearOptions(today.year), [today.year]);
@@ -158,6 +161,7 @@ export function EditMagazineModal() {
     setDeleting(false);
     setDropActive(false);
     setProgress(null);
+    setSelectedKey(null);
 
     const parsed = parseDate(collection.date);
     setTitle(collection.title);
@@ -180,6 +184,7 @@ export function EditMagazineModal() {
         };
       });
       setPhotos(drafts);
+      setSelectedKey(drafts[0]?.key ?? null);
       setLoaded(true);
       window.setTimeout(() => titleRef.current?.focus(), 40);
     });
@@ -194,7 +199,7 @@ export function EditMagazineModal() {
     };
   }, []);
 
-  // Escape key
+  // Escape / photo browse
   useEffect(() => {
     if (!open) return;
     function onKey(event: KeyboardEvent) {
@@ -206,11 +211,26 @@ export function EditMagazineModal() {
         } else {
           close();
         }
+        return;
       }
+      if (deleteConfirm) return;
+      const inField =
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement ||
+        event.target instanceof HTMLSelectElement;
+      if (inField) return;
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+      const list = photosRef.current;
+      if (!list.length) return;
+      event.preventDefault();
+      const current = list.findIndex((photo) => photo.key === selectedKey);
+      const delta = event.key === 'ArrowRight' ? 1 : -1;
+      const next = list[(Math.max(current, 0) + delta + list.length) % list.length];
+      if (next) setSelectedKey(next.key);
     }
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [open, close, deleteConfirm]);
+  }, [open, close, deleteConfirm, selectedKey]);
 
   const pushErrors = useCallback((messages: string[]) => {
     if (!messages.length) return;
@@ -242,6 +262,7 @@ export function EditMagazineModal() {
       const draftOffset = photosRef.current.length;
       photosRef.current = [...photosRef.current, ...drafts];
       setPhotos(photosRef.current);
+      if (!selectedKey) setSelectedKey(drafts[0]?.key ?? null);
       setProgress({ done: 0, total: accepted.length });
       if (fieldError) setFieldError(null);
 
@@ -278,7 +299,7 @@ export function EditMagazineModal() {
 
       setProgress(null);
     },
-    [fieldError, pushErrors],
+    [fieldError, pushErrors, selectedKey],
   );
 
   function onPick(event: ChangeEvent<HTMLInputElement>) {
@@ -292,8 +313,15 @@ export function EditMagazineModal() {
     setPhotos((cur) => {
       const target = cur.find((p) => p.key === key);
       if (target?.source === 'new') revokeObjectUrl(`draft:${key}`);
-      return cur.filter((p) => p.key !== key);
+      const next = cur.filter((p) => p.key !== key);
+      if (selectedKey === key) setSelectedKey(next[next.length - 1]?.key ?? null);
+      return next;
     });
+  }
+
+  function openPicker() {
+    ignoreBackdropUntil.current = Date.now() + 60_000;
+    fileRef.current?.click();
   }
 
   function onThumbDragStart(index: number) {
@@ -424,231 +452,247 @@ export function EditMagazineModal() {
 
   const progressPercent =
     progress && progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
-
   const isUserCollection = Boolean(collection?.createdAt);
+  const selected =
+    photos.find((photo) => photo.key === selectedKey) ?? photos[0] ?? null;
+  const slotCount = albumSlotCount(photos.length, MAX_PHOTOS);
+  const columns = Math.max(8, Math.ceil(slotCount / 2));
+  const canAdd = loaded && photos.length < MAX_PHOTOS && !saving && !deleting;
 
   return (
-    <div
-      className={`create-overlay ${closing ? 'is-closing' : ''}`}
-      role="presentation"
-      onMouseDown={(event) => {
+    <AlbumLayout
+      closing={closing}
+      titleId={titleId}
+      dropActive={dropActive}
+      onBackdropMouseDown={(event) => {
         if (event.target !== event.currentTarget) return;
         if (Date.now() < ignoreBackdropUntil.current) return;
         close();
       }}
-    >
-      <div
-        className="create-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        {deleteConfirm ? (
-          <div className="edit-delete-confirm">
-            <p className="create-kicker">Delete magazine</p>
-            <h2 id={titleId}>Remove "{collection?.title}"?</h2>
-            <p className="edit-delete-body">
-              This will permanently delete the magazine and all its photos. This cannot be undone.
-            </p>
-            <div className="create-actions">
-              <button
-                type="button"
-                className="create-cancel"
-                onClick={() => setDeleteConfirm(false)}
-                disabled={deleting}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="edit-delete-confirm-btn"
-                onClick={() => void onDelete()}
-                disabled={deleting}
-              >
-                {deleting ? 'Deleting…' : 'Delete magazine'}
-              </button>
-            </div>
-          </div>
+      onDragOver={onWellDragOver}
+      onDragLeave={() => setDropActive(false)}
+      onDrop={onWellDrop}
+      prompts={
+        deleteConfirm ? (
+          <>
+            <button
+              type="button"
+              className="album-prompt"
+              onClick={() => setDeleteConfirm(false)}
+              disabled={deleting}
+            >
+              <span className="album-key">B</span>
+              Back
+            </button>
+            <button
+              type="button"
+              className="album-prompt is-danger"
+              onClick={() => void onDelete()}
+              disabled={deleting}
+            >
+              <span className="album-key">A</span>
+              {deleting ? 'Deleting…' : 'Delete'}
+            </button>
+          </>
         ) : (
           <>
-            <p className="create-kicker">Edit magazine</p>
-            <h2 id={titleId}>{loaded ? collection?.title ?? 'Edit' : 'Loading…'}</h2>
-
-            {loaded && (
-              <>
-                <label className="create-field">
-                  <span>Collection name</span>
-                  <input
-                    ref={titleRef}
-                    type="text"
-                    value={title}
-                    maxLength={48}
-                    autoComplete="off"
-                    onChange={(event) => {
-                      setTitle(event.target.value);
-                      if (fieldError) setFieldError(null);
-                    }}
-                  />
-                </label>
-
-                <div className="create-field">
-                  <span>Date</span>
-                  <div className="create-date">
-                    <select
-                      value={month}
-                      aria-label="Month"
-                      onChange={(event) => setMonth(Number(event.target.value))}
-                    >
-                      {MONTHS.map((name, index) => (
-                        <option key={name} value={index}>
-                          {name}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      value={year}
-                      aria-label="Year"
-                      onChange={(event) => setYear(Number(event.target.value))}
-                    >
-                      {years.map((value) => (
-                        <option key={value} value={value}>
-                          {value}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="create-field">
-                  <span>Photographs</span>
-                  <div
-                    className={`create-well ${dropActive ? 'is-drop' : ''}`}
-                    onDragOver={onWellDragOver}
-                    onDragLeave={() => setDropActive(false)}
-                    onDrop={onWellDrop}
-                  >
-                    <div className="create-well-bar">
-                      <label
-                        className={`create-add ${photos.length >= MAX_PHOTOS || saving ? 'is-disabled' : ''}`}
-                      >
-                        Add photos
-                        <input
-                          className="create-file"
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          disabled={photos.length >= MAX_PHOTOS || saving}
-                          onClick={() => {
-                            ignoreBackdropUntil.current = Date.now() + 60_000;
-                          }}
-                          onChange={onPick}
-                        />
-                      </label>
-                      <em>
-                        {photos.length} / {MAX_PHOTOS}
-                        {readyPhotos.length > 0 ? ` · ${readyPhotos.length} new` : ''}
-                      </em>
-                    </div>
-                    {photos.length === 0 ? (
-                      <p className="create-empty">
-                        Drop images here, or choose them from your device. Playback order
-                        follows this list.
-                      </p>
-                    ) : (
-                      <ul className="create-thumbs">
-                        {photos.map((photo, index) => {
-                          const isDraggable =
-                            photo.source === 'existing' || photo.status === 'ready';
-                          return (
-                            <li
-                              key={photo.key}
-                              className={`create-thumb ${photo.source === 'new' ? (photo.status ?? '') : ''}`}
-                              draggable={isDraggable}
-                              onDragStart={onThumbDragStart(index)}
-                              onDragOver={onThumbDragOver(index)}
-                              onDragEnd={() => {
-                                dragIndex.current = null;
-                              }}
-                            >
-                              {photo.thumbUrl ? (
-                                <img
-                                  src={photo.thumbUrl}
-                                  alt={photo.fileName ?? `Photo ${index + 1}`}
-                                  draggable={false}
-                                />
-                              ) : (
-                                <span className="create-thumb-ph">
-                                  {photo.status === 'error' ? '!' : '…'}
-                                </span>
-                              )}
-                              <button
-                                type="button"
-                                className="create-thumb-remove"
-                                aria-label={`Remove photo ${index + 1}`}
-                                onClick={() => removePhoto(photo.key)}
-                              >
-                                ×
-                              </button>
-                              <span className="create-thumb-index">{index + 1}</span>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    )}
-                    {progress && (
-                      <p className="create-progress">
-                        Preparing photos…
-                        <br />
-                        {progress.done} / {progress.total}
-                        {progress.total > 0 ? ` — ${progressPercent}%` : ''}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {fieldError && <p className="create-error">{fieldError}</p>}
-                {errors.map((message, index) => (
-                  <p key={`${index}:${message}`} className="create-error is-soft">
-                    {message}
-                  </p>
-                ))}
-
-                <div className="edit-actions-row">
-                  {isUserCollection && (
-                    <button
-                      type="button"
-                      className="edit-delete-btn"
-                      onClick={() => setDeleteConfirm(true)}
-                      disabled={saving || deleting}
-                    >
-                      Delete
-                    </button>
-                  )}
-                  <div className="create-actions">
-                    <button
-                      type="button"
-                      className="create-cancel"
-                      onClick={close}
-                      disabled={saving || deleting}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      className="create-submit"
-                      onClick={() => void onSave()}
-                      disabled={saving || processing || deleting}
-                    >
-                      {saving ? 'Saving…' : processing ? 'Preparing…' : 'Save changes'}
-                    </button>
-                  </div>
-                </div>
-              </>
+            {isUserCollection && (
+              <button
+                type="button"
+                className="album-prompt is-danger"
+                onClick={() => setDeleteConfirm(true)}
+                disabled={saving || deleting || !loaded}
+              >
+                <span className="album-key">Y</span>
+                Delete
+              </button>
             )}
+            <button
+              type="button"
+              className="album-prompt"
+              onClick={close}
+              disabled={saving || deleting}
+            >
+              <span className="album-key">B</span>
+              Back
+            </button>
+            <button
+              type="button"
+              className="album-prompt is-primary"
+              onClick={() => void onSave()}
+              disabled={saving || processing || deleting || !loaded}
+            >
+              <span className="album-key">A</span>
+              {saving ? 'Saving…' : processing ? 'Preparing…' : 'Save'}
+            </button>
           </>
-        )}
-      </div>
-    </div>
+        )
+      }
+      confirm={
+        deleteConfirm ? (
+          <>
+            <h3 className="album-info-title">Remove</h3>
+            <p className="album-confirm-lead">
+              Remove “{collection?.title}” and every photograph in it? This cannot be undone.
+            </p>
+          </>
+        ) : undefined
+      }
+      featured={
+        selected?.thumbUrl ? (
+          <>
+            <img src={selected.thumbUrl} alt={selected.fileName ?? 'Photograph'} />
+            <button
+              type="button"
+              className="album-photo-remove"
+              aria-label={`Remove photo`}
+              onClick={() => removePhoto(selected.key)}
+            >
+              ×
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            className="album-photo-empty"
+            onClick={openPicker}
+            disabled={!canAdd}
+          >
+            {!loaded ? 'Loading…' : canAdd ? 'Add photographs' : 'Album is full'}
+          </button>
+        )
+      }
+      info={
+        <>
+          <h3 className="album-info-title">Info</h3>
+          <label className="album-row">
+            <span>Name</span>
+            <input
+              ref={titleRef}
+              type="text"
+              value={title}
+              maxLength={48}
+              placeholder="Untitled"
+              autoComplete="off"
+              disabled={!loaded}
+              onChange={(event) => {
+                setTitle(event.target.value);
+                if (fieldError) setFieldError(null);
+              }}
+            />
+          </label>
+          <div className="album-row">
+            <span>Date</span>
+            <div className="album-date">
+              <select
+                value={month}
+                aria-label="Month"
+                disabled={!loaded}
+                onChange={(event) => setMonth(Number(event.target.value))}
+              >
+                {MONTHS.map((name, index) => (
+                  <option key={name} value={index}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={year}
+                aria-label="Year"
+                disabled={!loaded}
+                onChange={(event) => setYear(Number(event.target.value))}
+              >
+                {years.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="album-row">
+            <span>Photographs</span>
+            <em>
+              {photos.length} / {MAX_PHOTOS}
+              {readyPhotos.length > 0 ? ` · ${readyPhotos.length} new` : ''}
+            </em>
+          </div>
+          {progress && (
+            <p className="album-note">
+              Preparing… {progress.done} / {progress.total}
+              {progress.total > 0 ? ` — ${progressPercent}%` : ''}
+            </p>
+          )}
+          {fieldError && <p className="album-note is-error">{fieldError}</p>}
+          {errors.map((message, index) => (
+            <p key={`${index}:${message}`} className="album-note is-error">
+              {message}
+            </p>
+          ))}
+        </>
+      }
+      strip={
+        <div className="album-thumbs-wrap">
+          <input
+            ref={fileRef}
+            className="create-file"
+            type="file"
+            accept="image/*"
+            multiple
+            disabled={!canAdd}
+            onChange={onPick}
+          />
+          <ul
+            className="album-thumbs"
+            style={{ gridTemplateColumns: `repeat(${columns}, minmax(4.05rem, 1fr))` }}
+          >
+            {Array.from({ length: slotCount }, (_, index) => {
+              const photo = photos[index];
+              if (!photo) {
+                return (
+                  <li key={`empty-${index}`} className="album-thumb is-empty">
+                    <button
+                      type="button"
+                      disabled={!canAdd}
+                      onClick={openPicker}
+                      aria-label={`Add photograph ${index + 1}`}
+                    >
+                      {index + 1}
+                    </button>
+                  </li>
+                );
+              }
+              const isSelected = (selected?.key ?? null) === photo.key;
+              const isDraggable = photo.source === 'existing' || photo.status === 'ready';
+              return (
+                <li
+                  key={photo.key}
+                  className={`album-thumb ${photo.source === 'new' ? (photo.status ?? '') : ''} ${isSelected ? 'is-selected' : ''}`}
+                  draggable={isDraggable}
+                  onClick={() => setSelectedKey(photo.key)}
+                  onDragStart={onThumbDragStart(index)}
+                  onDragOver={onThumbDragOver(index)}
+                  onDragEnd={() => {
+                    dragIndex.current = null;
+                  }}
+                >
+                  {photo.thumbUrl ? (
+                    <img
+                      src={photo.thumbUrl}
+                      alt={photo.fileName ?? `Photo ${index + 1}`}
+                      draggable={false}
+                    />
+                  ) : (
+                    <span className="album-thumb-ph">
+                      {photo.status === 'error' ? '!' : '…'}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      }
+    />
   );
 }

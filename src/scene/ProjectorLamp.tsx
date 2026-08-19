@@ -24,6 +24,12 @@ export function ProjectorLamp() {
       | undefined;
     if (!light) return;
 
+    // The volumetric cone is a fragment-heavy shader on a 128x64-segment
+    // mesh; hiding the light entirely (rather than just fading opacity to 0)
+    // drops it from the draw list and skips its shadow map, which matters
+    // since the projector is off most of the time in catalog mode.
+    light.visible = on > 0.0005;
+
     light.position.set(LENS.x, LENS.y, LENS.z);
     light.intensity = on * 22;
 

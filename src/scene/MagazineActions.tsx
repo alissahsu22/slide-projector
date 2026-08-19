@@ -11,7 +11,7 @@ const BTN_H = 0.028;
 const BTN_D = 0.0032;
 const BTN_GAP = 0.008;
 /** World-up clearance from the magazine’s top edge to the bottom of the buttons. */
-const POP_ABOVE = 0.042;
+const POP_ABOVE = 0.03;
 const TUCK_INTO = 0.014;
 /** Sit the bar above the pivot so it grows up, not down over the spines. */
 const BAR_LIFT = BTN_H / 2;
@@ -35,8 +35,8 @@ function drawActionFace(label: string, fontsReady: boolean): HTMLCanvasElement {
     ctx.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 2, 1);
   }
 
-  ctx.strokeStyle = 'rgba(220, 210, 196, 0.42)';
-  ctx.lineWidth = 7;
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 12;
   ctx.strokeRect(10, 10, w - 20, h - 20);
 
   const typeface = fontsReady

@@ -2,11 +2,14 @@ import { ContactShadows } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import { Suspense } from 'react';
 import * as THREE from 'three';
-import { CATALOG_CAM, TABLE_TOP } from '../experience/layout';
-import { setCrateSelected } from '../state/store';
+import { exitCuration } from '../experience/curation';
+import { dragReleasedRecently } from '../experience/drag';
+import { CATALOG_CAM, fitPoseToAspect, TABLE_TOP } from '../experience/layout';
+import { getState, setCrateSelected } from '../state/store';
 import { CameraController } from './CameraController';
 import { CartridgeCrate } from './CartridgeCrate';
 import { Cartridges } from './Cartridges';
+import { DragController } from './DragController';
 import { LightingController } from './LightingController';
 import { ProjectionScreen } from './ProjectionScreen';
 import { Projector } from './Projector';
@@ -29,15 +32,30 @@ export function Experience() {
         near: 0.05,
         far: 50,
       }}
-      onCreated={({ camera, gl }) => {
-        camera.lookAt(CATALOG_CAM.tx, CATALOG_CAM.ty, CATALOG_CAM.tz);
+      onCreated={({ camera, gl, size }) => {
+        const pose = fitPoseToAspect(CATALOG_CAM, size.width / size.height);
+        camera.position.set(pose.px, pose.py, pose.pz);
+        camera.lookAt(pose.tx, pose.ty, pose.tz);
+        if (camera instanceof THREE.PerspectiveCamera) {
+          camera.fov = pose.fov;
+          camera.updateProjectionMatrix();
+        }
         gl.shadowMap.type = THREE.PCFSoftShadowMap;
       }}
-      onPointerMissed={() => setCrateSelected(null)}
+      onPointerMissed={() => {
+        if (getState().mode === 'CURATING') {
+          // A drop that lands on nothing is a cancelled drag, not a request to
+          // put the crate back on the desk.
+          if (!dragReleasedRecently()) void exitCuration();
+          return;
+        }
+        setCrateSelected(null);
+      }}
     >
       <color attach="background" args={['#000000']} />
       <fog attach="fog" args={['#000000', 16, 32]} />
       <CameraController />
+      <DragController />
       <LightingController />
       <Room />
       <Suspense fallback={null}>
@@ -52,7 +70,8 @@ export function Experience() {
         scale={4.2}
         blur={3.4}
         far={0.8}
-        resolution={256}
+        resolution={128}
+        smooth={false}
         color="#2a1608"
       />
     </Canvas>

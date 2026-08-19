@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { Loader } from '@react-three/drei';
+import { lazy, Suspense, useEffect } from 'react';
 import {
   changeSlide,
   requestEject,
@@ -7,13 +8,31 @@ import {
 } from './experience/controller';
 import { usePhotoWindow } from './hooks/usePhotoWindow';
 import { Experience } from './scene/Experience';
-import { getState, mergePersistedCollections, setCrateSelected, useExperience } from './state/store';
+import { viewportCapacity } from './experience/capacity';
+import { exitCuration, syncShelfRow } from './experience/curation';
+import {
+  getState,
+  mergePersistedCollections,
+  setCapacity,
+  setCrateSelected,
+  useExperience,
+} from './state/store';
 import { loadPersistedCollections } from './storage/collectionService';
 import { PlaybackControls } from './ui/PlaybackControls';
-import { CreateMagazineModal } from './ui/CreateMagazineModal';
-import { EditMagazineModal } from './ui/EditMagazineModal';
+import { NameGate } from './ui/NameGate';
 import { Overlay } from './ui/Overlay';
-import { unlockAudio } from './audio/sounds';
+import { preloadSoundFiles, unlockAudio } from './audio/sounds';
+import { startMusic } from './audio/music';
+
+// Both dialogs already no-op (return null) while closed, so deferring their
+// chunk out of the initial bundle costs nothing visible — it just keeps the
+// upload/edit image-processing code off the critical path for first paint.
+const CreateMagazineModal = lazy(() =>
+  import('./ui/CreateMagazineModal').then((m) => ({ default: m.CreateMagazineModal })),
+);
+const EditMagazineModal = lazy(() =>
+  import('./ui/EditMagazineModal').then((m) => ({ default: m.EditMagazineModal })),
+);
 
 const CRATE_IDLE_MS = 5000;
 
@@ -40,7 +59,42 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const unlock = () => unlockAudio();
+    void preloadSoundFiles();
+  }, []);
+
+  // Wider viewport, more slots in the crate. Shrinking only stops the user
+  // adding more — it never turns a curated magazine back out onto the shelf.
+  // The shelf row is fitted to the viewport too, so a phone files its
+  // magazines into the narrower slice of shelf the curation shot can frame.
+  useEffect(() => {
+    let timer = 0;
+    const fit = () => {
+      setCapacity(viewportCapacity());
+      syncShelfRow(window.innerWidth, window.innerHeight);
+    };
+    fit();
+    const sync = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(fit, 150);
+    };
+    window.addEventListener('resize', sync);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('resize', sync);
+    };
+  }, []);
+
+  // Magazines restored from IndexedDB arrive after the first fit, and they all
+  // need a slot of their own.
+  useEffect(() => {
+    syncShelfRow(window.innerWidth, window.innerHeight);
+  }, [collections.length]);
+
+  useEffect(() => {
+    const unlock = () => {
+      unlockAudio();
+      startMusic();
+    };
     window.addEventListener('pointerdown', unlock, { once: true });
     return () => window.removeEventListener('pointerdown', unlock);
   }, []);
@@ -74,7 +128,8 @@ export default function App() {
         event.preventDefault();
         togglePause();
       } else if (event.key === 'Escape') {
-        void requestEject();
+        if (mode === 'CURATING') void exitCuration();
+        else void requestEject();
       } else if ((event.key === 'r' || event.key === 'R') && mode !== 'CATALOG') {
         void restartCollection();
       }
@@ -86,10 +141,14 @@ export default function App() {
   return (
     <div className="app">
       <Experience />
+      <Loader />
       <Overlay />
       <PlaybackControls />
-      <CreateMagazineModal open={createOpen} />
-      <EditMagazineModal />
+      <NameGate />
+      <Suspense fallback={null}>
+        <CreateMagazineModal open={createOpen} />
+        <EditMagazineModal />
+      </Suspense>
     </div>
   );
 }

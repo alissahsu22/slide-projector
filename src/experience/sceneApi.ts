@@ -1,8 +1,8 @@
 import type { Group, Mesh } from 'three';
 import * as THREE from 'three';
-import { getState } from '../state/store';
 import {
   CRATE_POS,
+  crateRig,
   INSERTION_APPROACH_LOCAL,
   type MagazinePose,
   PROJECTOR_POS,
@@ -16,18 +16,10 @@ export type CartridgeHandle = {
   slides: (Group | null)[];
 };
 
-export type MagazineHandle = {
-  group: Group;
-  home: MagazinePose;
-  slides: (Group | null)[];
-};
-
 const memory = new Map<string, { home: CartridgeHandle['home']; loose: boolean }>();
-const magazineMemory = new Map<string, MagazinePose>();
 
 export const sceneApi = {
   cartridges: new Map<string, CartridgeHandle>(),
-  magazines: new Map<string, MagazineHandle>(),
   projector: null as Group | null,
   crate: null as Group | null,
   insertionPoint: null as Group | null,
@@ -61,20 +53,6 @@ export function unregisterCartridge(id: string, group: Group): void {
   }
 }
 
-export function registerMagazine(id: string, group: Group, home: MagazinePose): void {
-  const remembered = magazineMemory.get(id);
-  const useHome = remembered ?? home;
-  sceneApi.magazines.set(id, { group, home: { ...useHome }, slides: [] });
-}
-
-export function unregisterMagazine(id: string, group: Group): void {
-  const current = sceneApi.magazines.get(id);
-  if (current?.group === group) {
-    magazineMemory.set(id, { ...current.home });
-    sceneApi.magazines.delete(id);
-  }
-}
-
 export function moveProjector(x: number, z: number): void {
   PROJECTOR_POS.x = x;
   PROJECTOR_POS.z = z;
@@ -85,31 +63,12 @@ export function moveProjector(x: number, z: number): void {
   }
 }
 
+/** Reseat the crate on the desk. Slot homes follow `crateRig` on their own. */
 export function moveCrate(x: number, z: number): void {
-  const dx = x - CRATE_POS.x;
-  const dz = z - CRATE_POS.z;
   CRATE_POS.x = x;
   CRATE_POS.z = z;
-  if (sceneApi.crate) {
-    sceneApi.crate.position.x = x;
-    sceneApi.crate.position.z = z;
-  }
-  const inserted = getState().insertedId;
-  for (const [id, handle] of sceneApi.cartridges) {
-    if (id === inserted || handle.loose) continue;
-    handle.home.x += dx;
-    handle.home.z += dz;
-    handle.group.position.x += dx;
-    handle.group.position.z += dz;
-  }
-  const selected = getState().selectedCollectionId;
-  for (const [id, handle] of sceneApi.magazines) {
-    handle.home.x += dx;
-    handle.home.z += dz;
-    if (id === selected) continue;
-    handle.group.position.x += dx;
-    handle.group.position.z += dz;
-  }
+  crateRig.x = x;
+  crateRig.z = z;
 }
 
 export function moveCartridge(id: string, x: number, z: number, lift = 0): void {

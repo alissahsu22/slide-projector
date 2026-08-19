@@ -14,6 +14,7 @@ import type { ProcessedPhoto } from '../lib/images/types';
 import { objectUrlFor, revokeObjectUrl } from '../media/objectUrls';
 import { persistUserCollection } from '../storage/collectionService';
 import { addArrivingCollection, setCreateOpen } from '../state/store';
+import { AlbumLayout, albumSlotCount } from './AlbumLayout';
 
 const MONTHS = [
   'January',
@@ -74,8 +75,10 @@ type Props = {
 export function CreateMagazineModal({ open }: Props) {
   const titleId = useId();
   const titleRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const photosRef = useRef<DraftPhoto[]>([]);
   const dragIndex = useRef<number | null>(null);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const ignoreBackdropUntil = useRef(0);
   const today = useMemo(() => currentMonthYear(), []);
   const years = useMemo(() => yearOptions(today.year), [today.year]);
@@ -109,6 +112,7 @@ export function CreateMagazineModal({ open }: Props) {
     setMonth(stamp.month);
     setYear(stamp.year);
     setPhotos([]);
+    setSelectedKey(null);
     setErrors([]);
     setFieldError(null);
     setSaving(false);
@@ -152,11 +156,25 @@ export function CreateMagazineModal({ open }: Props) {
         event.preventDefault();
         event.stopPropagation();
         close();
+        return;
       }
+      const inField =
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement ||
+        event.target instanceof HTMLSelectElement;
+      if (inField) return;
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+      const list = photosRef.current;
+      if (!list.length) return;
+      event.preventDefault();
+      const current = list.findIndex((photo) => photo.key === selectedKey);
+      const delta = event.key === 'ArrowRight' ? 1 : -1;
+      const next = list[(Math.max(current, 0) + delta + list.length) % list.length];
+      if (next) setSelectedKey(next.key);
     }
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [open, close]);
+  }, [open, close, selectedKey]);
 
   const pushErrors = useCallback((messages: string[]) => {
     if (!messages.length) return;
@@ -189,6 +207,7 @@ export function CreateMagazineModal({ open }: Props) {
       const draftOffset = photosRef.current.length;
       photosRef.current = [...photosRef.current, ...drafts];
       setPhotos(photosRef.current);
+      if (!selectedKey) setSelectedKey(drafts[0]?.key ?? null);
       setProgress({ done: 0, total: accepted.length });
       if (fieldError) setFieldError(null);
 
@@ -233,7 +252,7 @@ export function CreateMagazineModal({ open }: Props) {
 
       setProgress(null);
     },
-    [fieldError, pushErrors],
+    [fieldError, pushErrors, selectedKey],
   );
 
   function onPick(event: ChangeEvent<HTMLInputElement>) {
@@ -247,8 +266,15 @@ export function CreateMagazineModal({ open }: Props) {
     setPhotos((current) => {
       const target = current.find((photo) => photo.key === key);
       if (target?.thumbUrl) revokeObjectUrl(`draft:${key}`);
-      return current.filter((photo) => photo.key !== key);
+      const next = current.filter((photo) => photo.key !== key);
+      if (selectedKey === key) setSelectedKey(next[next.length - 1]?.key ?? null);
+      return next;
     });
+  }
+
+  function openPicker() {
+    ignoreBackdropUntil.current = Date.now() + 60_000;
+    fileRef.current?.click();
   }
 
   function onThumbDragStart(index: number) {
@@ -336,173 +362,191 @@ export function CreateMagazineModal({ open }: Props) {
     progress && progress.total > 0
       ? Math.round((progress.done / progress.total) * 100)
       : 0;
+  const selected =
+    photos.find((photo) => photo.key === selectedKey) ?? photos[0] ?? null;
+  const slotCount = albumSlotCount(photos.length, MAX_PHOTOS);
+  const columns = Math.max(8, Math.ceil(slotCount / 2));
+  const canAdd = photos.length < MAX_PHOTOS && !saving;
 
   return (
-    <div
-      className={`create-overlay ${closing ? 'is-closing' : ''}`}
-      role="presentation"
-      onMouseDown={(event) => {
+    <AlbumLayout
+      closing={closing}
+      titleId={titleId}
+      dropActive={dropActive}
+      onBackdropMouseDown={(event) => {
         if (event.target !== event.currentTarget) return;
         if (Date.now() < ignoreBackdropUntil.current) return;
         close();
       }}
-    >
-      <div
-        className="create-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <p className="create-kicker">New magazine</p>
-        <h2 id={titleId}>Load a roll of photographs</h2>
-
-        <label className="create-field">
-          <span>Collection name</span>
-          <input
-            ref={titleRef}
-            type="text"
-            value={title}
-            maxLength={48}
-            placeholder="Thailand"
-            autoComplete="off"
-            onChange={(event) => {
-              setTitle(event.target.value);
-              if (fieldError) setFieldError(null);
-            }}
-          />
-        </label>
-
-        <div className="create-field">
-          <span>Date</span>
-          <div className="create-date">
-            <select
-              value={month}
-              aria-label="Month"
-              onChange={(event) => setMonth(Number(event.target.value))}
-            >
-              {MONTHS.map((name, index) => (
-                <option key={name} value={index}>
-                  {name}
-                </option>
-              ))}
-            </select>
-            <select
-              value={year}
-              aria-label="Year"
-              onChange={(event) => setYear(Number(event.target.value))}
-            >
-              {years.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div className="create-field">
-          <span>Photographs</span>
-          <div
-            className={`create-well ${dropActive ? 'is-drop' : ''}`}
-            onDragOver={onWellDragOver}
-            onDragLeave={() => setDropActive(false)}
-            onDrop={onWellDrop}
-          >
-            <div className="create-well-bar">
-              <label
-                className={`create-add ${photos.length >= MAX_PHOTOS || saving ? 'is-disabled' : ''}`}
-              >
-                Add photos
-                <input
-                  className="create-file"
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  disabled={photos.length >= MAX_PHOTOS || saving}
-                  onClick={() => {
-                    ignoreBackdropUntil.current = Date.now() + 60_000;
-                  }}
-                  onChange={onPick}
-                />
-              </label>
-              <em>
-                {photos.length} / {MAX_PHOTOS}
-                {readyPhotos.length !== photos.length
-                  ? ` · ${readyPhotos.length} ready`
-                  : ''}
-              </em>
-            </div>
-            {photos.length === 0 ? (
-              <p className="create-empty">
-                Drop images here, or choose them from your device. Playback order
-                follows this list.
-              </p>
-            ) : (
-              <ul className="create-thumbs">
-                {photos.map((photo, index) => (
-                  <li
-                    key={photo.key}
-                    className={`create-thumb ${photo.status}`}
-                    draggable={photo.status === 'ready'}
-                    onDragStart={onThumbDragStart(index)}
-                    onDragOver={onThumbDragOver(index)}
-                    onDragEnd={() => {
-                      dragIndex.current = null;
-                    }}
-                  >
-                    {photo.thumbUrl ? (
-                      <img src={photo.thumbUrl} alt={photo.fileName} draggable={false} />
-                    ) : (
-                      <span className="create-thumb-ph">
-                        {photo.status === 'error' ? '!' : '…'}
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      className="create-thumb-remove"
-                      aria-label={`Remove ${photo.fileName}`}
-                      onClick={() => removePhoto(photo.key)}
-                    >
-                      ×
-                    </button>
-                    <span className="create-thumb-index">{index + 1}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {progress && (
-              <p className="create-progress">
-                Preparing photos…
-                <br />
-                {progress.done} / {progress.total}
-                {progress.total > 0 ? ` — ${progressPercent}%` : ''}
-              </p>
-            )}
-          </div>
-        </div>
-
-        {fieldError && <p className="create-error">{fieldError}</p>}
-        {errors.map((message, index) => (
-          <p key={`${index}:${message}`} className="create-error is-soft">
-            {message}
-          </p>
-        ))}
-
-        <div className="create-actions">
-          <button type="button" className="create-cancel" onClick={close} disabled={saving}>
-            Cancel
+      onDragOver={onWellDragOver}
+      onDragLeave={() => setDropActive(false)}
+      onDrop={onWellDrop}
+      prompts={
+        <>
+          <button type="button" className="album-prompt" onClick={close} disabled={saving}>
+            <span className="album-key">B</span>
+            Back
           </button>
           <button
             type="button"
-            className="create-submit"
+            className="album-prompt is-primary"
             onClick={() => void onCreate()}
             disabled={saving || processing}
           >
-            {saving ? 'Saving…' : processing ? 'Preparing…' : 'Create magazine'}
+            <span className="album-key">A</span>
+            {saving ? 'Saving…' : processing ? 'Preparing…' : 'Create'}
           </button>
+        </>
+      }
+      featured={
+        selected?.thumbUrl ? (
+          <>
+            <img src={selected.thumbUrl} alt={selected.fileName} />
+            <button
+              type="button"
+              className="album-photo-remove"
+              aria-label={`Remove ${selected.fileName}`}
+              onClick={() => removePhoto(selected.key)}
+            >
+              ×
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            className="album-photo-empty"
+            onClick={openPicker}
+            disabled={!canAdd}
+          >
+            {canAdd ? 'Add photographs' : 'Album is full'}
+          </button>
+        )
+      }
+      info={
+        <>
+          <h3 className="album-info-title">Info</h3>
+          <label className="album-row">
+            <span>Name</span>
+            <input
+              ref={titleRef}
+              type="text"
+              value={title}
+              maxLength={48}
+              placeholder="Untitled"
+              autoComplete="off"
+              onChange={(event) => {
+                setTitle(event.target.value);
+                if (fieldError) setFieldError(null);
+              }}
+            />
+          </label>
+          <div className="album-row">
+            <span>Date</span>
+            <div className="album-date">
+              <select
+                value={month}
+                aria-label="Month"
+                onChange={(event) => setMonth(Number(event.target.value))}
+              >
+                {MONTHS.map((name, index) => (
+                  <option key={name} value={index}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={year}
+                aria-label="Year"
+                onChange={(event) => setYear(Number(event.target.value))}
+              >
+                {years.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="album-row">
+            <span>Photographs</span>
+            <em>
+              {photos.length} / {MAX_PHOTOS}
+              {readyPhotos.length !== photos.length
+                ? ` · ${readyPhotos.length} ready`
+                : ''}
+            </em>
+          </div>
+          {progress && (
+            <p className="album-note">
+              Preparing… {progress.done} / {progress.total}
+              {progress.total > 0 ? ` — ${progressPercent}%` : ''}
+            </p>
+          )}
+          {fieldError && <p className="album-note is-error">{fieldError}</p>}
+          {errors.map((message, index) => (
+            <p key={`${index}:${message}`} className="album-note is-error">
+              {message}
+            </p>
+          ))}
+        </>
+      }
+      strip={
+        <div className="album-thumbs-wrap">
+          <input
+            ref={fileRef}
+            className="create-file"
+            type="file"
+            accept="image/*"
+            multiple
+            disabled={!canAdd}
+            onChange={onPick}
+          />
+          <ul
+            className="album-thumbs"
+            style={{ gridTemplateColumns: `repeat(${columns}, minmax(4.05rem, 1fr))` }}
+          >
+            {Array.from({ length: slotCount }, (_, index) => {
+              const photo = photos[index];
+              if (!photo) {
+                return (
+                  <li key={`empty-${index}`} className="album-thumb is-empty">
+                    <button
+                      type="button"
+                      disabled={!canAdd}
+                      onClick={openPicker}
+                      aria-label={`Add photograph ${index + 1}`}
+                    >
+                      {index + 1}
+                    </button>
+                  </li>
+                );
+              }
+              const isSelected = (selected?.key ?? null) === photo.key;
+              return (
+                <li
+                  key={photo.key}
+                  className={`album-thumb ${photo.status} ${isSelected ? 'is-selected' : ''}`}
+                  draggable={photo.status === 'ready'}
+                  onClick={() => setSelectedKey(photo.key)}
+                  onDragStart={onThumbDragStart(index)}
+                  onDragOver={onThumbDragOver(index)}
+                  onDragEnd={() => {
+                    dragIndex.current = null;
+                  }}
+                >
+                  {photo.thumbUrl ? (
+                    <img src={photo.thumbUrl} alt={photo.fileName} draggable={false} />
+                  ) : (
+                    <span className="album-thumb-ph">
+                      {photo.status === 'error' ? '!' : '…'}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         </div>
-      </div>
-    </div>
+      }
+    />
   );
 }

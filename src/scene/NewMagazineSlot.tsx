@@ -6,6 +6,7 @@ import { isMagazineSelectionLocked } from '../experience/controller';
 import {
   CRATE,
   CRATE_MAGAZINE,
+  crateSlotCount,
   MAGAZINE_HOVER_LIFT,
   magazineCrateInner,
 } from '../experience/layout';
@@ -149,7 +150,8 @@ function makeAddLabel(fontsReady: boolean): THREE.CanvasTexture {
 
 export function NewMagazineSlot() {
   const group = useRef<THREE.Group>(null);
-  const count = useExperience((s) => s.collections.length);
+  const capacity = useExperience((s) => s.capacity);
+  const filled = useExperience((s) => s.collectionIds.length);
   const mode = useExperience((s) => s.mode);
   const createOpen = useExperience((s) => s.createOpen);
   const [hover, setHover] = useState(false);
@@ -160,9 +162,10 @@ export function NewMagazineSlot() {
   const label = useMemo(() => makeAddLabel(fontsReady), [fontsReady]);
   useEffect(() => () => label.dispose(), [label]);
 
-  const slotCount = count + 1;
+  // Parked in the crate's last slot, past the empty ones curating drops into.
+  const slotCount = crateSlotCount(capacity, filled);
   const inner = magazineCrateInner(slotCount);
-  const index = count;
+  const index = slotCount - 1;
   const x0 = -inner.x / 2 + CRATE.padX + CRATE_MAGAZINE.thickness / 2;
   const x = x0 + index * (CRATE_MAGAZINE.thickness + CRATE.gap);
   const { thickness: t, height: h, depth: d } = CRATE_MAGAZINE;

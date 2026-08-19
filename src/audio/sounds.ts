@@ -8,17 +8,29 @@ export type SoundName =
   | 'switch';
 
 /**
- * Drop replacement WAVs in /public/sounds using these filenames
- * to override the synthesized mechanical sounds.
+ * Drop replacement WAVs in /public/sounds at these paths to override the
+ * synthesized mechanical sounds. Several names may share one file.
  */
 export const SOUND_FILES: Record<SoundName, string> = {
   pickup: '/sounds/pickup.wav',
   insert: '/sounds/insert.wav',
-  advance: '/sounds/advance.wav',
-  reverse: '/sounds/reverse.wav',
+  advance: '/sounds/slide-click.wav',
+  reverse: '/sounds/slide-click.wav',
   rewind: '/sounds/rewind.wav',
   eject: '/sounds/eject.wav',
-  switch: '/sounds/switch.wav',
+  switch: '/sounds/switch.mp3',
+};
+
+/** Trims recorded samples down to the level of the synthesized fallbacks. */
+const SOUND_GAIN: Partial<Record<SoundName, number>> = {
+  advance: 0.55,
+  reverse: 0.55,
+  switch: 0.7,
+};
+
+/** Reverse runs the same carriage sample a touch slower so it reads as backwards. */
+const SOUND_RATE: Partial<Record<SoundName, number>> = {
+  reverse: 0.92,
 };
 
 let ctx: AudioContext | null = null;
@@ -113,17 +125,45 @@ function noiseBurst(duration: number, freq: number, q: number, gain: number): vo
   src.start();
 }
 
+function playBuffer(buf: AudioBuffer, gain: number, rate: number): AudioBufferSourceNode {
+  const audio = getCtx();
+  const src = audio.createBufferSource();
+  src.buffer = buf;
+  src.playbackRate.value = rate;
+  const g = audio.createGain();
+  g.gain.value = gain;
+  src.connect(g);
+  g.connect(audio.destination);
+  src.start();
+  return src;
+}
+
+function trackClick(src: AudioBufferSourceNode): void {
+  clickSources.push(src);
+  src.onended = () => {
+    const i = clickSources.indexOf(src);
+    if (i >= 0) clickSources.splice(i, 1);
+  };
+}
+
 /** Several overlapping mechanical clacks compressed into a rewind burst. */
 export function playRewindClacks(count: number, spanMs: number): void {
   stopClicks();
   const n = Math.max(2, Math.round(count));
   const span = Math.max(120, spanMs);
   const epoch = clickEpoch;
+  const sample = buffers.get('advance');
   for (let i = 0; i < n; i++) {
     const t = (i / Math.max(1, n - 1)) * span * 0.88;
     clickTimeouts.push(
       window.setTimeout(() => {
         if (epoch !== clickEpoch) return;
+        if (sample) {
+          // Sped up and quieter so the clacks stack into a burst instead of
+          // smearing into each other at full length.
+          trackClick(playBuffer(sample, 0.3, 1.55 + (i % 3) * 0.06));
+          return;
+        }
         noiseBurst(0.03, 1450 + i * 50, 2, 0.13);
         click(148 + i * 14, 0.042, 0.26, 'triangle');
         thud(60, 0.065, 0.18);
@@ -195,17 +235,8 @@ export function playSound(
   if (opts?.interrupt || CLICK_SOUNDS.has(name)) stopClicks();
   const buf = buffers.get(name);
   if (buf) {
-    const src = audio.createBufferSource();
-    src.buffer = buf;
-    src.connect(audio.destination);
-    src.start();
-    if (CLICK_SOUNDS.has(name)) {
-      clickSources.push(src);
-      src.onended = () => {
-        const i = clickSources.indexOf(src);
-        if (i >= 0) clickSources.splice(i, 1);
-      };
-    }
+    const src = playBuffer(buf, SOUND_GAIN[name] ?? 1, SOUND_RATE[name] ?? 1);
+    if (CLICK_SOUNDS.has(name)) trackClick(src);
     return;
   }
   synth(name);
@@ -213,14 +244,24 @@ export function playSound(
 
 export async function preloadSoundFiles(): Promise<void> {
   const audio = getCtx();
+  const byUrl = new Map<string, SoundName[]>();
+  for (const name of Object.keys(SOUND_FILES) as SoundName[]) {
+    const url = SOUND_FILES[name];
+    const names = byUrl.get(url);
+    if (names) names.push(name);
+    else byUrl.set(url, [name]);
+  }
+
   await Promise.all(
-    (Object.keys(SOUND_FILES) as SoundName[]).map(async (name) => {
+    [...byUrl].map(async ([url, names]) => {
       try {
-        const res = await fetch(SOUND_FILES[name], { method: 'GET' });
-        if (!res.ok) return;
+        const res = await fetch(url, { method: 'GET' });
+        // A missing file falls through to the SPA index.html with a 200, so
+        // the status alone isn't enough to tell that a sample exists.
+        if (!res.ok || res.headers.get('content-type')?.startsWith('text/html')) return;
         const arr = await res.arrayBuffer();
         const buf = await audio.decodeAudioData(arr);
-        buffers.set(name, buf);
+        for (const name of names) buffers.set(name, buf);
       } catch {
         // Keep synthesized fallback.
       }

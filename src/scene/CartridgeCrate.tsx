@@ -1,11 +1,12 @@
+import { useFrame } from '@react-three/fiber';
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import {
   CRATE,
-  CRATE_POS,
+  crateRig,
+  crateSlotCount,
   magazineCrateInner,
   magazineCrateOuter,
-  TABLE_TOP,
 } from '../experience/layout';
 import { sceneApi } from '../experience/sceneApi';
 import { getCrateWoodTexture } from '../lib/proceduralTextures';
@@ -63,24 +64,36 @@ function makeSideWall(
   return geom;
 }
 
-function makeStamp(): THREE.CanvasTexture {
+const STAMP_W = 512;
+const STAMP_H = 160;
+const STAMP_INK = 384;
+
+function makeStamp(viewerName: string | null): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 160;
+  canvas.width = STAMP_W;
+  canvas.height = STAMP_H;
   const ctx = canvas.getContext('2d');
   if (ctx) {
     ctx.fillStyle = '#f0e6d2';
-    ctx.fillRect(0, 0, 512, 160);
+    ctx.fillRect(0, 0, STAMP_W, STAMP_H);
     for (let i = 0; i < 900; i++) {
       ctx.fillStyle = `rgba(90,60,30,${Math.random() * 0.05})`;
-      ctx.fillRect(Math.random() * 512, Math.random() * 160, 2, 1);
+      ctx.fillRect(Math.random() * STAMP_W, Math.random() * STAMP_H, 2, 1);
     }
     ctx.fillStyle = '#16120e';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font = '700 72px "Barlow Condensed", "Helvetica Neue", sans-serif';
     ctx.letterSpacing = '0.28em';
-    ctx.fillText('SLIDES', 256, 84);
+    const text = viewerName ? `FOR ${viewerName.toUpperCase()}` : 'SLIDES';
+    // Long names would run off the brass plate, so pull the size back until
+    // the whole line fits inside the engraved area.
+    let size = 72;
+    do {
+      ctx.font = `700 ${size}px "Barlow Condensed", "Helvetica Neue", sans-serif`;
+      if (ctx.measureText(text).width <= STAMP_INK) break;
+      size -= 2;
+    } while (size > 26);
+    ctx.fillText(text, STAMP_W / 2, 84);
   }
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
@@ -106,11 +119,14 @@ function Wood({
 }
 
 export function CartridgeCrate() {
-  const count = useExperience((s) => s.collections.length + 1);
+  const capacity = useExperience((s) => s.capacity);
+  const filled = useExperience((s) => s.collectionIds.length);
+  const viewerName = useExperience((s) => s.viewerName);
+  const count = crateSlotCount(capacity, filled);
   const root = useRef<THREE.Group>(null);
 
   const wood = useMemo(() => getCrateWoodTexture(), []);
-  const stamp = useMemo(() => makeStamp(), []);
+  const stamp = useMemo(() => makeStamp(viewerName), [viewerName]);
   const inner = magazineCrateInner(count);
   const outer = magazineCrateOuter(count);
   const w = outer.w;
@@ -131,6 +147,7 @@ export function CartridgeCrate() {
     },
     [frontGeom, sideGeom],
   );
+  useLayoutEffect(() => () => stamp.dispose(), [stamp]);
 
   useLayoutEffect(() => {
     sceneApi.crate = root.current;
@@ -138,6 +155,14 @@ export function CartridgeCrate() {
       if (sceneApi.crate === root.current) sceneApi.crate = null;
     };
   }, []);
+
+  // The rig is tweened outside React while curating, so read it every frame.
+  useFrame(() => {
+    const g = root.current;
+    if (!g) return;
+    g.position.set(crateRig.x, crateRig.y, crateRig.z);
+    g.rotation.y = crateRig.ry;
+  }, -3);
 
   const tooth = 0.011;
   const corners: [number, number][] = [
@@ -153,7 +178,8 @@ export function CartridgeCrate() {
   return (
     <group
       ref={root}
-      position={[CRATE_POS.x, TABLE_TOP, CRATE_POS.z]}
+      position={[crateRig.x, crateRig.y, crateRig.z]}
+      rotation={[0, crateRig.ry, 0]}
       onPointerDown={(event) => {
         event.stopPropagation();
         setCrateSelected(null);

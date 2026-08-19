@@ -184,7 +184,7 @@ export function LightingController() {
         penumbra={0.92}
         decay={1.8}
         castShadow
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={[1024, 1024]}
         shadow-bias={-0.00012}
         shadow-normalBias={0.04}
         shadow-camera-near={0.35}

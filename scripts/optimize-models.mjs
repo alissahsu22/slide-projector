@@ -28,6 +28,7 @@ const MODELS = [
   { file: 'curtains.glb', textureSize: 512 },
   { file: 'cartridge.glb', textureSize: 512 },
   { file: 'table.glb', textureSize: 512 },
+  { file: 'book_shelf.glb', textureSize: 512 },
 ];
 
 /**

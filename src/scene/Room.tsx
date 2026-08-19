@@ -6,6 +6,7 @@ import { WALL_Z } from '../experience/layout';
 import { throwLevel, visuals } from '../experience/visuals';
 import { setCrateSelected } from '../state/store';
 import { Bed } from './Bed';
+import { Bookshelf } from './Bookshelf';
 import { Carpet } from './Carpet';
 import { CeilingLight } from './CeilingLight';
 import { Door, DoorVoid } from './Door';
@@ -67,7 +68,9 @@ export function Room() {
         setCrateSelected(null);
       }}
     >
-      <Carpet />
+      <Suspense fallback={null}>
+        <Carpet />
+      </Suspense>
 
       <Ceiling map={ceilingPaper} />
       <CeilingLight />
@@ -114,9 +117,14 @@ export function Room() {
       </WithWall>
 
       <Table />
-      <Bed />
+      <Suspense fallback={null}>
+        <Bed />
+      </Suspense>
       <Suspense fallback={null}>
         <PlushUnicorn />
+      </Suspense>
+      <Suspense fallback={null}>
+        <Bookshelf />
       </Suspense>
     </group>
   );

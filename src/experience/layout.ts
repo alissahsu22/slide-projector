@@ -143,6 +143,23 @@ export function syncProjectorDerived(): void {
 
 export const CRATE_POS = { x: 0.87, y: TABLE_TOP, z: 0.42 };
 
+/**
+ * Live pose of the crate. `CRATE_POS` is where it rests on the desk; curating
+ * flies this rig into the foreground, and every crate slot is measured from it,
+ * so the magazines standing in the crate come along without being parented.
+ */
+export const crateRig = {
+  x: CRATE_POS.x,
+  y: CRATE_POS.y,
+  z: CRATE_POS.z,
+  /** Turn about y. On the desk the crate front faces the catalog camera (+z). */
+  ry: 0,
+};
+
+export function restCratePose(): { x: number; y: number; z: number; ry: number } {
+  return { x: CRATE_POS.x, y: CRATE_POS.y, z: CRATE_POS.z, ry: 0 };
+}
+
 export const WALL_Z = -4.08;
 
 export const SCREEN = {
@@ -175,6 +192,14 @@ export type MagazinePose = {
   rz: number;
 };
 
+/**
+ * Slots the crate shows. Capacity sets it, but a viewport that narrowed after
+ * curating keeps its extra magazines, and the last slot is always the "+" card.
+ */
+export function crateSlotCount(capacity: number, filled: number): number {
+  return Math.max(capacity, filled) + 1;
+}
+
 export function magazineCrateInner(count: number): {
   x: number;
   y: number;
@@ -204,27 +229,131 @@ export function magazineCrateOuter(count: number): {
   };
 }
 
+/** Offset of a slot along the crate's own slot axis (crate-local +x). */
+export function crateSlotOffset(index: number, count: number): number {
+  const inner = magazineCrateInner(count);
+  const x0 = -inner.x / 2 + CRATE.padX + CRATE_MAGAZINE.thickness;
+  return x0 + index * SLOT_SPACING;
+}
+
 /**
  * Rest pose for a magazine standing in the crate. The origin is the trough
  * floor-center, so `CRATE_MAGAZINE_RZ` swings the body onto −X and up: shift
  * back by half a slot to sit centered, and up by half its length to stand on
- * the crate floor.
+ * the crate floor. Measured from `crateRig`, so the row follows the crate when
+ * it flies up for curating.
  */
 export function crateMagazineWorld(index: number, count: number): MagazinePose {
-  const inner = magazineCrateInner(count);
-  const x0 = -inner.x / 2 + CRATE.padX + CRATE_MAGAZINE.thickness;
+  const offset = crateSlotOffset(index, count);
+  const cos = Math.cos(crateRig.ry);
+  const sin = Math.sin(crateRig.ry);
   return {
-    x: CRATE_POS.x + x0 + index * (CRATE_MAGAZINE.thickness + CRATE.gap),
-    y: TABLE_TOP + CRATE.floor + CRATE_MAGAZINE.height / 2,
-    z: CRATE_POS.z,
+    x: crateRig.x + offset * cos,
+    y: crateRig.y + CRATE.floor + CRATE_MAGAZINE.height / 2,
+    z: crateRig.z - offset * sin,
     rx: 0,
-    ry: CRATE_SLIDE_Y,
+    ry: CRATE_SLIDE_Y + crateRig.ry,
     rz: CRATE_MAGAZINE_RZ,
   };
 }
 
-/** Locked from the orbit pose the user chose. */
-export function getCatalogCam() {
+export type CameraPose = {
+  px: number;
+  py: number;
+  pz: number;
+  tx: number;
+  ty: number;
+  tz: number;
+  fov: number;
+  /**
+   * Floor on the aspect refit, as a multiple of the authored distance. Shots
+   * composed around their vertical extent set this to 1 so a wide viewport
+   * spends the extra aspect on width instead of dollying in and cropping the
+   * composition; 0 leaves the refit free to close the distance.
+   */
+  minDolly: number;
+};
+
+/**
+ * Aspect the poses below were framed at. `fov` is vertical, so the visible
+ * width is height × aspect — every pose is refitted to the live viewport so
+ * the same world width stays in frame no matter the window shape.
+ */
+export const REFERENCE_ASPECT = 1.19;
+
+/** Multipliers of the authored distance. Past these the fov takes over. */
+const DOLLY_CLAMP = { min: 0.55, max: 1.75 };
+const FOV_CLAMP = { min: 20, max: 60 };
+
+/**
+ * Holding horizontal framing constant leaves wide desktops feeling cropped
+ * vertically, so past `fromAspect` the fit asks for progressively more world
+ * width than the authored shot.
+ */
+const WIDE_PULLBACK = { fromAspect: 1.45, perAspect: 0.22, max: 1.18 };
+
+/**
+ * The same fit overshoots on phones: matching the authored world width on a
+ * tall viewport wastes it on ceiling and floor, so narrow aspects give up some
+ * of that width to sit closer to the subject.
+ */
+const NARROW_TIGHTEN = { fromAspect: 0.85, perAspect: 1.8, min: 0.32 };
+
+const _fitted: CameraPose = {
+  px: 0,
+  py: 0,
+  pz: 0,
+  tx: 0,
+  ty: 0,
+  tz: 0,
+  fov: 0,
+  minDolly: 0,
+};
+
+/**
+ * Refit an authored pose to `aspect`, holding horizontal framing constant.
+ *
+ * Distance carries the correction first, since dollying along the view axis
+ * preserves the foreshortening of the authored shot. Ultrawide and very narrow
+ * viewports run past the dolly clamp, and the leftover is absorbed by fov.
+ * Wide and narrow viewports also get the `WIDE_PULLBACK` / `NARROW_TIGHTEN`
+ * adjustment on top of the fit.
+ */
+export function fitPoseToAspect(
+  pose: CameraPose,
+  aspect: number,
+  out: CameraPose = _fitted,
+): CameraPose {
+  if (!Number.isFinite(aspect) || aspect <= 0) return pose;
+
+  const widen = Math.min(
+    WIDE_PULLBACK.max,
+    1 + Math.max(0, aspect - WIDE_PULLBACK.fromAspect) * WIDE_PULLBACK.perAspect,
+  );
+  const tighten = Math.max(
+    NARROW_TIGHTEN.min,
+    1 - Math.max(0, NARROW_TIGHTEN.fromAspect - aspect) * NARROW_TIGHTEN.perAspect,
+  );
+  const wanted = Math.max(
+    pose.minDolly,
+    (REFERENCE_ASPECT / aspect) * widen * tighten,
+  );
+  const dolly = Math.min(DOLLY_CLAMP.max, Math.max(DOLLY_CLAMP.min, wanted));
+  const halfRad = Math.atan(Math.tan((pose.fov * Math.PI) / 360) * (wanted / dolly));
+
+  out.px = pose.tx + (pose.px - pose.tx) * dolly;
+  out.py = pose.ty + (pose.py - pose.ty) * dolly;
+  out.pz = pose.tz + (pose.pz - pose.tz) * dolly;
+  out.tx = pose.tx;
+  out.ty = pose.ty;
+  out.tz = pose.tz;
+  out.minDolly = pose.minDolly;
+  out.fov = Math.min(FOV_CLAMP.max, Math.max(FOV_CLAMP.min, (halfRad * 360) / Math.PI));
+  return out;
+}
+
+/** Locked from the orbit pose the user chose, framed at `REFERENCE_ASPECT`. */
+export function getCatalogCam(): CameraPose {
   return {
     px: 0.40,
     py: 1.16,
@@ -233,13 +362,14 @@ export function getCatalogCam() {
     ty: 0.80,
     tz: 0.42,
     fov: 36,
+    minDolly: 0,
   };
 }
 
 export const CATALOG_CAM = getCatalogCam();
 
 /** Pulled-back three-quarter during insert — projector + side rail in frame. */
-export function getInsertCam() {
+export function getInsertCam(): CameraPose {
   return {
     px: PROJECTOR_POS.x + 0.78,
     py: TABLE_TOP + 0.55,
@@ -248,10 +378,11 @@ export function getInsertCam() {
     ty: TABLE_TOP + 0.13,
     tz: PROJECTOR_POS.z + 0.06,
     fov: 42,
+    minDolly: 0,
   };
 }
 
-export const PLAYBACK_CAM = {
+export const PLAYBACK_CAM: CameraPose = {
   px: 0.34,
   py: 0.92,
   pz: 0.46,
@@ -259,12 +390,9 @@ export const PLAYBACK_CAM = {
   ty: 1.78,
   tz: -3.05,
   fov: 42,
+  minDolly: 0,
 };
 
 export function crateInnerWidth(count: number): number {
   return magazineCrateInner(count).x;
-}
-
-export function crateSlotWorld(index: number, count: number): MagazinePose {
-  return crateMagazineWorld(index, count);
 }

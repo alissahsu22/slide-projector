@@ -30,6 +30,7 @@ import {
   runProjectorSlideTransition,
   SLIDE_TRANSITION,
 } from './slideTransition';
+import { tween } from './tween';
 import { cameraFollow, cameraRig, visuals } from './visuals';
 import { magazineRailX } from '../scene/magazineLayout';
 import * as THREE from 'three';
@@ -46,24 +47,6 @@ let autoplayTimer: ReturnType<typeof setTimeout> | null = null;
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => {
     window.setTimeout(resolve, ms);
-  });
-}
-
-function tween(target: object, vars: Record<string, unknown>): Promise<void> {
-  return new Promise((resolve) => {
-    const prev = vars.onComplete as (() => void) | undefined;
-    const prevInterrupt = vars.onInterrupt as (() => void) | undefined;
-    gsap.to(target, {
-      ...vars,
-      onComplete: () => {
-        prev?.();
-        resolve();
-      },
-      onInterrupt: () => {
-        prevInterrupt?.();
-        resolve();
-      },
-    });
   });
 }
 
@@ -100,7 +83,7 @@ function sceneRoot(obj: Object3D): Object3D | null {
 }
 
 function dockedGroup(id: string) {
-  return sceneApi.magazines.get(id)?.group ?? sceneApi.cartridges.get(id)?.group;
+  return sceneApi.cartridges.get(id)?.group;
 }
 
 function isOnInsertionRail(obj: Object3D): boolean {
@@ -456,9 +439,7 @@ async function joltMechanism(direction: number): Promise<void> {
     );
   }
   const magId = getState().selectedCollectionId ?? getState().insertedId;
-  const slides =
-    (magId ? sceneApi.magazines.get(magId)?.slides : undefined) ??
-    (magId ? sceneApi.cartridges.get(magId)?.slides : undefined);
+  const slides = magId ? sceneApi.cartridges.get(magId)?.slides : undefined;
   const currentSlide = slides?.[getState().slideIndex];
   if (currentSlide) {
     const restY =
@@ -589,6 +570,7 @@ async function ejectCartridge(opts?: { dimOnly?: boolean }): Promise<void> {
   gsap.killTweensOf(cameraRig);
   cameraFollow.active = false;
 
+  playSound('switch');
   await Promise.all([
     tween(visuals, { projection: 0, duration: 0.22 }),
     tween(visuals, { beam: 0, duration: 0.28 }),
@@ -659,11 +641,7 @@ export async function requestEject(): Promise<void> {
   if (mode === 'CHANGING_SLIDE' || mode === 'REWINDING') return;
   sequenceLock = true;
   try {
-    if (sceneApi.magazines.has(selectedCollectionId ?? insertedId ?? '')) {
-      await ejectMagazine();
-    } else {
-      await ejectCartridge();
-    }
+    await ejectCartridge();
   } finally {
     sequenceLock = false;
   }
@@ -821,134 +799,4 @@ export function isInteractionLocked(): boolean {
 export function isMagazineSelectionLocked(): boolean {
   const { mode } = getState();
   return sequenceLock || mode === 'INSERTING' || isInteractionLocked();
-}
-
-async function insertMagazine(id: string): Promise<boolean> {
-  const handle = sceneApi.magazines.get(id);
-  if (!handle) return false;
-
-  const { group } = handle;
-  playSound('pickup');
-  followMagazine(id);
-
-  const lifted = await liftFromCrate(group);
-  if (!lifted) {
-    stopFollowingMagazine();
-    await returnToCrate(group, handle.home);
-    return false;
-  }
-  await delay(420);
-  const seated = await insertOntoRail(group, getState().slideIndex);
-  if (!seated) {
-    stopFollowingMagazine();
-    await returnToCrate(group, handle.home);
-    return false;
-  }
-  stopFollowingMagazine();
-  return true;
-}
-
-async function ejectMagazine(): Promise<void> {
-  const { selectedCollectionId, insertedId } = getState();
-  const id = selectedCollectionId ?? insertedId;
-  if (!id) return;
-  const handle = sceneApi.magazines.get(id);
-  clearAutoplay();
-  persistSlide(id, getState().slideIndex);
-  setState({
-    mode: 'EJECTING',
-    isPlaying: false,
-    hoveredId: null,
-    photoReady: false,
-  });
-
-  gsap.killTweensOf(cameraRig);
-  cameraFollow.active = false;
-  await Promise.all([
-    tween(visuals, { projection: 0, duration: 0.22 }),
-    tween(visuals, { beam: 0, duration: 0.28 }),
-    tween(visuals, { lamp: 0, duration: 0.36 }),
-  ]);
-  visuals.flicker = 1;
-  visuals.interrupt = 1;
-  resetProjectionTransition();
-
-  await delay(520);
-  await tween(visuals, { roomLight: 1, duration: 0.95, ease: 'power1.inOut' });
-  await delay(480);
-
-  playSound('eject');
-  if (handle) {
-    cameraFollow.id = id;
-    cameraFollow.active = true;
-    await ejectOffRail(handle.group);
-    await delay(420);
-    await returnToCrate(handle.group, handle.home);
-    cameraFollow.active = false;
-    cameraFollow.id = null;
-    void dockMagazineAtIndex(id, 0, false);
-  }
-
-  setState({
-    insertedId: null,
-    selectedCollectionId: null,
-    slideIndex: 0,
-    photoReady: false,
-  });
-  retainPhotos(new Set());
-
-  await tween(cameraRig, { ...getCatalogCam(), duration: 0.9, ease: 'power2.inOut' });
-  setState({ mode: 'CATALOG', isPlaying: false });
-}
-
-export async function requestSelectMagazine(id: string): Promise<void> {
-  if (sequenceLock) return;
-  if (!sceneApi.magazines.has(id)) return;
-  const { selectedCollectionId, insertedId } = getState();
-  if (selectedCollectionId === id || insertedId === id) return;
-
-  sequenceLock = true;
-  try {
-    if (selectedCollectionId || insertedId) {
-      setState({ mode: 'SWITCHING' });
-      await ejectMagazine();
-      setState({ mode: 'SWITCHING' });
-    }
-
-    const slideIndex = rememberedSlide(id);
-    killProjection();
-    setState({
-      mode: 'INSERTING',
-      selectedCollectionId: id,
-      insertedId: id,
-      hoveredId: null,
-      previewedId: null,
-      slideIndex,
-      isPlaying: false,
-      photoReady: false,
-    });
-    preloadWindow(id, slideIndex);
-    void waitForCurrentPhoto(id, slideIndex);
-
-    gsap.killTweensOf(cameraRig);
-    const ok = await insertMagazine(id);
-    if (!ok) {
-      setState({
-        mode: 'CATALOG',
-        selectedCollectionId: null,
-        insertedId: null,
-      });
-      return;
-    }
-
-    await dockMagazineAtIndex(id, slideIndex, false);
-    persistSlide(id, slideIndex);
-    await delay(480);
-    await settlePlaybackCamera();
-    await dimRoomThenProject();
-    setState({ mode: 'PLAYING', isPlaying: true });
-    scheduleAutoplay();
-  } finally {
-    sequenceLock = false;
-  }
 }
