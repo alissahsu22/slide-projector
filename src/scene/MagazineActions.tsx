@@ -8,7 +8,6 @@ import type { Collection } from '../types/collection';
 
 const BTN_W = 0.092;
 const BTN_H = 0.028;
-const BTN_D = 0.0032;
 const BTN_GAP = 0.008;
 /** World-up clearance from the magazine’s top edge to the bottom of the buttons. */
 const POP_ABOVE = 0.03;
@@ -16,7 +15,11 @@ const TUCK_INTO = 0.014;
 /** Sit the bar above the pivot so it grows up, not down over the spines. */
 const BAR_LIFT = BTN_H / 2;
 
-function drawActionFace(label: string, fontsReady: boolean): HTMLCanvasElement {
+function drawActionFace(
+  label: string,
+  fontsReady: boolean,
+  hover: boolean,
+): HTMLCanvasElement {
   const w = 512;
   const h = 160;
   const canvas = document.createElement('canvas');
@@ -25,35 +28,28 @@ function drawActionFace(label: string, fontsReady: boolean): HTMLCanvasElement {
   const ctx = canvas.getContext('2d');
   if (!ctx) return canvas;
 
-  ctx.fillStyle = '#14110c';
+  ctx.fillStyle = hover ? '#a87b3c' : '#000000';
   ctx.fillRect(0, 0, w, h);
-  const specks = Math.round((w * h) / 90);
-  for (let i = 0; i < specks; i++) {
-    const a = 0.03 + Math.random() * 0.05;
-    ctx.fillStyle =
-      Math.random() > 0.5 ? `rgba(255,244,220,${a})` : `rgba(0,0,0,${a})`;
-    ctx.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 2, 1);
-  }
-
-  ctx.strokeStyle = '#fff';
-  ctx.lineWidth = 12;
-  ctx.strokeRect(10, 10, w - 20, h - 20);
 
   const typeface = fontsReady
-    ? '"Special Elite", "Courier New", monospace'
-    : '"Courier New", monospace';
-  ctx.fillStyle = '#e6ddd0';
+    ? '"Pixelify Sans", ui-monospace, monospace'
+    : 'ui-monospace, monospace';
+  ctx.fillStyle = hover ? '#0a0806' : '#ffffff';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.letterSpacing = '0.22em';
+  ctx.letterSpacing = '0.06em';
   ctx.font = `400 72px ${typeface}`;
-  ctx.fillText(label, w / 2, h / 2 + 4);
+  ctx.fillText(label, w / 2, h / 2 + 10);
   ctx.letterSpacing = '0em';
   return canvas;
 }
 
-function makeActionTexture(label: string, fontsReady: boolean): THREE.CanvasTexture {
-  const tex = new THREE.CanvasTexture(drawActionFace(label, fontsReady));
+function makeActionTexture(
+  label: string,
+  fontsReady: boolean,
+  hover: boolean,
+): THREE.CanvasTexture {
+  const tex = new THREE.CanvasTexture(drawActionFace(label, fontsReady, hover));
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 8;
   tex.minFilter = THREE.LinearMipmapLinearFilter;
@@ -64,14 +60,25 @@ function makeActionTexture(label: string, fontsReady: boolean): THREE.CanvasText
 
 type ActionButtonProps = {
   label: string;
-  texture: THREE.CanvasTexture;
+  idle: THREE.CanvasTexture;
+  hoverTex: THREE.CanvasTexture;
   position: [number, number, number];
   onPress: () => void;
 };
 
-function ActionButton({ label, texture, position, onPress }: ActionButtonProps) {
+function ActionButton({ label, idle, hoverTex, position, onPress }: ActionButtonProps) {
   const [hover, setHover] = useState(false);
+  const hoverOk = useRef(false);
   useCursor(hover, 'pointer');
+  const texture = hover ? hoverTex : idle;
+
+  useEffect(() => {
+    hoverOk.current = false;
+    const id = window.setTimeout(() => {
+      hoverOk.current = true;
+    }, 480);
+    return () => window.clearTimeout(id);
+  }, []);
 
   return (
     <group
@@ -79,7 +86,7 @@ function ActionButton({ label, texture, position, onPress }: ActionButtonProps) 
       position={position}
       onPointerOver={(e) => {
         e.stopPropagation();
-        setHover(true);
+        if (hoverOk.current) setHover(true);
       }}
       onPointerOut={(e) => {
         e.stopPropagation();
@@ -91,27 +98,9 @@ function ActionButton({ label, texture, position, onPress }: ActionButtonProps) 
         onPress();
       }}
     >
-      <mesh castShadow>
-        <boxGeometry args={[BTN_W, BTN_H, BTN_D]} />
-        <meshStandardMaterial
-          color={hover ? '#2a241c' : '#1a1612'}
-          roughness={0.72}
-          metalness={0.08}
-        />
-      </mesh>
-      <mesh position={[0, 0, BTN_D / 2 + 0.00015]}>
-        <planeGeometry args={[BTN_W * 0.94, BTN_H * 0.82]} />
-        <meshStandardMaterial
-          map={texture}
-          roughness={0.88}
-          metalness={0}
-          emissiveMap={texture}
-          emissive="#ffffff"
-          emissiveIntensity={hover ? 0.42 : 0.2}
-          polygonOffset
-          polygonOffsetFactor={-1}
-          polygonOffsetUnits={-1}
-        />
+      <mesh>
+        <planeGeometry args={[BTN_W, BTN_H]} />
+        <meshBasicMaterial map={texture} toneMapped={false} side={THREE.DoubleSide} />
       </mesh>
     </group>
   );
@@ -136,14 +125,30 @@ export function MagazineActions({ collection, trayW, trayH, selected }: Props) {
     void document.fonts.ready.then(() => setFontsReady(true));
   }, []);
 
-  const loadTex = useMemo(() => makeActionTexture('LOAD', fontsReady), [fontsReady]);
-  const editTex = useMemo(() => makeActionTexture('EDIT', fontsReady), [fontsReady]);
+  const loadIdle = useMemo(
+    () => makeActionTexture('LOAD', fontsReady, false),
+    [fontsReady],
+  );
+  const loadHover = useMemo(
+    () => makeActionTexture('LOAD', fontsReady, true),
+    [fontsReady],
+  );
+  const editIdle = useMemo(
+    () => makeActionTexture('EDIT', fontsReady, false),
+    [fontsReady],
+  );
+  const editHover = useMemo(
+    () => makeActionTexture('EDIT', fontsReady, true),
+    [fontsReady],
+  );
   useEffect(
     () => () => {
-      loadTex.dispose();
-      editTex.dispose();
+      loadIdle.dispose();
+      loadHover.dispose();
+      editIdle.dispose();
+      editHover.dispose();
     },
-    [loadTex, editTex],
+    [loadIdle, loadHover, editIdle, editHover],
   );
 
   useLayoutEffect(() => {
@@ -214,14 +219,16 @@ export function MagazineActions({ collection, trayW, trayH, selected }: Props) {
       <Billboard follow>
         <ActionButton
           label="LOAD"
-          texture={loadTex}
+          idle={loadIdle}
+          hoverTex={loadHover}
           position={[loadX, BAR_LIFT, 0]}
           onPress={() => void requestInsert(collection.id)}
         />
         {showEdit && (
           <ActionButton
             label="EDIT"
-            texture={editTex}
+            idle={editIdle}
+            hoverTex={editHover}
             position={[editX, BAR_LIFT, 0]}
             onPress={() => {
               setCrateSelected(null);

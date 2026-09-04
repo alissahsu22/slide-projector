@@ -50,7 +50,7 @@ canvas {
 .curation {
   position: absolute;
   left: 50%;
-  bottom: 4.35rem;
+  bottom: 1.4rem;
   transform: translateX(-50%);
   margin: 0;
   pointer-events: none;
@@ -61,14 +61,20 @@ canvas {
   text-shadow: var(--hud-glow);
 }
 
+/* Sit above the playback panel when both are on screen (orbit while a
+   magazine is still loaded). */
+.status {
+  bottom: 4.35rem;
+}
+
 .hint,
 .status {
-  max-width: min(42rem, calc(100% - 2.4rem));
+  max-width: min(48rem, calc(100% - 2.4rem));
   letter-spacing: 0.06em;
-  line-height: 1.7;
+  line-height: 1.55;
   text-transform: uppercase;
-  font-size: 0.62rem;
-  opacity: 0.88;
+  font-size: 1.25rem;
+  opacity: 0.92;
 }
 
 .magazine-readout {
@@ -80,14 +86,14 @@ canvas {
 }
 
 .magazine-readout-title {
-  font-size: 0.7rem;
+  font-size: 1.25rem;
   letter-spacing: 0.06em;
   line-height: 1.45;
   text-transform: uppercase;
 }
 
 .magazine-readout-meta {
-  font-size: 0.55rem;
+  font-size: 0.95rem;
   letter-spacing: 0.08em;
   line-height: 1.5;
   text-transform: uppercase;
@@ -126,12 +132,12 @@ canvas {
 
 .curation-hint {
   margin: 0;
-  max-width: min(42rem, calc(100% - 2.4rem));
-  font-size: 0.62rem;
+  max-width: min(48rem, calc(100% - 2.4rem));
+  font-size: 1.25rem;
   letter-spacing: 0.06em;
-  line-height: 1.7;
+  line-height: 1.55;
   text-transform: uppercase;
-  opacity: 0.88;
+  opacity: 0.92;
 }
 
 /* Filled brass rather than the ghost styling of its neighbours in the bar —
@@ -159,14 +165,17 @@ canvas {
   color: var(--hud-btn-ink);
 }
 
-.bottom-bar {
+.top-bar {
   position: absolute;
-  left: 50%;
-  bottom: 1.4rem;
-  transform: translateX(-50%);
+  top: 1.15rem;
+  right: 1.15rem;
   z-index: 20;
   display: flex;
+  align-items: center;
+  justify-content: flex-end;
   gap: 0.5rem;
+  max-width: calc(100% - 2.3rem);
+  flex-wrap: wrap;
 }
 
 .orbit-toggle,
@@ -174,7 +183,7 @@ canvas {
 .shelf-toggle {
   appearance: none;
   border: var(--hud-btn-border);
-  background: rgba(6, 5, 4, 0.72);
+  background: #000;
   color: #fff;
   font-family: var(--pixel);
   font-weight: 400;
@@ -183,7 +192,6 @@ canvas {
   text-transform: uppercase;
   padding: 0.62rem 0.7rem;
   cursor: pointer;
-  backdrop-filter: blur(10px);
   transition:
     background 0.18s ease,
     color 0.18s ease;
@@ -218,17 +226,12 @@ canvas {
 }
 
 .music-toggle {
-  position: absolute;
-  top: 1.15rem;
-  right: 1.15rem;
-  z-index: 20;
   display: grid;
   place-items: center;
+  flex-shrink: 0;
   width: 2.5rem;
   height: 2.5rem;
   padding: 0;
-  background: #000;
-  backdrop-filter: none;
 }
 
 .music-toggle svg {
@@ -358,7 +361,7 @@ canvas {
 .playback button {
   appearance: none;
   border: var(--hud-btn-border);
-  background: rgba(255, 255, 255, 0.04);
+  background: #000;
   color: #fff;
   font-family: var(--pixel);
   font-weight: 400;
@@ -367,6 +370,9 @@ canvas {
   text-transform: uppercase;
   padding: 0.55rem 0.7rem;
   cursor: pointer;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease;
 }
 
 .playback button:hover:not(:disabled) {
@@ -390,31 +396,15 @@ canvas {
   display: flex;
   align-items: stretch;
   justify-content: center;
-  padding: 0.85rem 1.6rem 1.05rem;
-  background:
-    radial-gradient(ellipse at 8% 92%, rgba(70, 48, 58, 0.42), transparent 46%),
-    radial-gradient(ellipse at 94% 6%, rgba(48, 42, 60, 0.36), transparent 42%),
-    radial-gradient(ellipse at 50% 40%, rgba(22, 16, 12, 0.5), rgba(3, 2, 2, 0.96) 74%);
-  backdrop-filter: blur(7px);
+  padding: 1.15rem 1.6rem 1.25rem;
+  background: radial-gradient(
+    circle at 50% 42%,
+    rgba(20, 15, 10, 0.82) 0%,
+    rgba(6, 5, 4, 0.96) 70%
+  );
+  backdrop-filter: blur(10px);
   opacity: 1;
   transition: opacity 0.22s ease;
-}
-
-.create-overlay::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.16;
-  mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-
-.album-defs {
-  position: absolute;
-  width: 0;
-  height: 0;
-  overflow: hidden;
 }
 
 .create-overlay.is-closing {
@@ -424,8 +414,8 @@ canvas {
 
 .create-overlay.is-drop .album-page {
   box-shadow:
-    0 0 0 1px rgba(230, 200, 110, 0.35),
-    0 22px 50px rgba(0, 0, 0, 0.5);
+    0 0 0 3px var(--hud-btn-hover),
+    var(--hud-glow);
 }
 
 .album {
@@ -439,28 +429,29 @@ canvas {
 
 .album-chrome {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0 0.35rem 0.55rem;
+  padding: 0 0.1rem 0.7rem;
   flex-shrink: 0;
 }
 
 .album-title {
   margin: 0;
-  font-family: Cinzel, "Times New Roman", serif;
-  font-size: clamp(2.15rem, 4.6vw, 3.15rem);
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  color: #f3eee4;
-  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.6);
+  font-family: var(--pixel);
+  font-size: clamp(1.35rem, 3.2vw, 2rem);
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: var(--hud-glow);
 }
 
 .album-prompts {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 0.15rem 1.1rem;
+  gap: 0.5rem;
 }
 
 .album-prompt {
@@ -468,41 +459,45 @@ canvas {
   display: inline-flex;
   align-items: center;
   gap: 0.42rem;
-  border: 0;
-  background: none;
-  padding: 0.2rem 0;
-  color: #f4f1ea;
-  font-family: "Barlow Condensed", "Helvetica Neue", sans-serif;
-  font-size: 0.98rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
+  border: 3px solid rgba(255, 255, 255, 0.28);
+  background: #000;
+  color: #fff;
+  padding: 0.62rem 0.85rem;
+  font-family: var(--pixel);
+  font-size: 0.7rem;
+  font-weight: 400;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   cursor: pointer;
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
-  opacity: 0.9;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease;
 }
 
 .album-key {
   display: grid;
   place-items: center;
-  width: 1.2rem;
-  height: 1.2rem;
+  width: 1.15rem;
+  height: 1.15rem;
   border: 1.6px solid currentColor;
-  border-radius: 50%;
   font-size: 0.7rem;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: 0;
   line-height: 1;
 }
 
 .album-prompt:hover:not(:disabled) {
-  opacity: 1;
-  color: #fff8e8;
+  background: var(--hud-btn-hover);
+  color: var(--hud-btn-ink);
 }
 
 .album-prompt.is-primary {
-  color: #e8d48a;
-  opacity: 1;
+  background: var(--hud-btn-hover);
+  color: var(--hud-btn-ink);
+}
+
+.album-prompt.is-primary:hover:not(:disabled) {
+  background: #c9a05a;
 }
 
 .album-prompt.is-danger {
@@ -520,91 +515,10 @@ canvas {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  color: #1c1814;
-  background-color: #dcd6c8;
-  background-image:
-    radial-gradient(ellipse at 18% 12%, rgba(255, 252, 245, 0.45), transparent 46%),
-    radial-gradient(ellipse at 88% 78%, rgba(90, 72, 52, 0.1), transparent 48%),
-    repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 27px,
-      rgba(70, 55, 40, 0.045) 28px
-    ),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='64' viewBox='0 0 56 64'%3E%3Cg fill='none' stroke='%23321' stroke-width='0.7' opacity='0.09'%3E%3Cpath d='M28 0l28 16v32L28 64 0 48V16z'/%3E%3Cpath d='M28 0v64M0 16l56 32M56 16L0 48'/%3E%3C/g%3E%3C/svg%3E");
-  clip-path: polygon(
-    0.6% 1.4%,
-    3% 0.3%,
-    7% 1.1%,
-    12% 0.2%,
-    18% 1%,
-    24% 0.25%,
-    31% 0.95%,
-    38% 0.2%,
-    45% 1.05%,
-    52% 0.3%,
-    60% 0.9%,
-    68% 0.2%,
-    75% 1%,
-    82% 0.35%,
-    89% 0.95%,
-    95% 0.25%,
-    99.4% 1.2%,
-    100% 4%,
-    99.2% 10%,
-    100% 18%,
-    99.3% 28%,
-    100% 40%,
-    99.2% 52%,
-    100% 64%,
-    99.3% 76%,
-    100% 86%,
-    99.4% 94%,
-    98.2% 99.3%,
-    90% 98.9%,
-    82% 99.7%,
-    73% 99%,
-    64% 99.7%,
-    54% 99.05%,
-    45% 99.7%,
-    36% 99%,
-    27% 99.65%,
-    18% 99.1%,
-    10% 99.7%,
-    3% 99%,
-    0.4% 97.8%,
-    0% 90%,
-    0.8% 80%,
-    0% 68%,
-    0.7% 56%,
-    0% 44%,
-    0.8% 32%,
-    0% 20%,
-    0.7% 10%
-  );
-  filter: drop-shadow(0 22px 48px rgba(0, 0, 0, 0.55));
-}
-
-.album-page::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 3;
-  box-shadow:
-    inset 0 0 80px 16px rgba(42, 32, 24, 0.28),
-    inset 0 0 2px rgba(255, 248, 236, 0.35);
-}
-
-.album-page-grain {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0.1;
-  mix-blend-mode: multiply;
-  background: #d8cfc0;
-  filter: url(#album-grain);
+  color: #fff;
+  background: #000;
+  border: 3px solid rgba(255, 255, 255, 0.28);
+  box-shadow: var(--hud-glow);
 }
 
 .album-stage {
@@ -615,7 +529,7 @@ canvas {
   grid-template-columns: minmax(0, 1.38fr) minmax(16.5rem, 0.78fr);
   gap: 1.45rem 1.9rem;
   min-height: 16rem;
-  padding: 1.55rem 1.7rem 1.15rem 1.9rem;
+  padding: 1.35rem 1.45rem 1.05rem;
 }
 
 .album-frame {
@@ -623,11 +537,9 @@ canvas {
   display: grid;
   min-height: 14rem;
   height: 100%;
-  background: linear-gradient(180deg, #3f382f 0%, #1a1612 42%, #100e0c 100%);
-  padding: 0.4rem;
-  box-shadow:
-    inset 0 0 0 1px #5a5348,
-    0 10px 22px rgba(0, 0, 0, 0.22);
+  background: #0c0b09;
+  padding: 0;
+  border: 3px solid rgba(255, 255, 255, 0.22);
 }
 
 .album-frame-inner {
@@ -635,7 +547,6 @@ canvas {
   min-height: 0;
   height: 100%;
   background: #0c0b09;
-  box-shadow: inset 0 0 0 1px rgba(70, 62, 52, 0.4);
 }
 
 .album-frame img,
@@ -647,19 +558,21 @@ canvas {
   background: #0e0c0a;
 }
 
-.album-frame img {
-  filter: contrast(1.06) saturate(0.82);
-}
-
 .album-photo-empty {
   appearance: none;
   border: 0;
-  color: #8a8276;
-  font-family: "Cormorant Garamond", "Times New Roman", serif;
-  font-size: 1.2rem;
-  font-style: italic;
-  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.42);
+  font-family: var(--pixel);
+  font-size: 0.85rem;
+  font-style: normal;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   cursor: pointer;
+}
+
+.album-photo-empty:hover:not(:disabled) {
+  color: #fff;
 }
 
 .album-photo-empty:disabled {
@@ -670,46 +583,54 @@ canvas {
   position: absolute;
   top: 0.55rem;
   right: 0.55rem;
-  width: 1.35rem;
-  height: 1.35rem;
-  border: 0;
-  background: rgba(10, 8, 6, 0.72);
-  color: #efe8dc;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: var(--hud-btn-border);
+  background: #000;
+  color: #fff;
+  font-family: var(--pixel);
   font-size: 1rem;
   line-height: 1;
   cursor: pointer;
+}
+
+.album-photo-remove:hover {
+  background: var(--hud-btn-hover);
+  color: var(--hud-btn-ink);
 }
 
 .album-info {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  padding: 0.2rem 0.55rem 0.15rem 0.35rem;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='64' viewBox='0 0 56 64'%3E%3Cg fill='none' stroke='%23321' stroke-width='0.8' opacity='0.14'%3E%3Cpath d='M28 0l28 16v32L28 64 0 48V16z'/%3E%3Cpath d='M28 0v64M0 16l56 32M56 16L0 48'/%3E%3C/g%3E%3C/svg%3E");
+  padding: 0.15rem 0.15rem 0.1rem 0;
 }
 
 .album-info-title {
-  margin: 0 0 0.35rem;
-  font-family: Cinzel, "Times New Roman", serif;
-  font-size: 1.55rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  margin: 0 0 0.45rem;
+  font-family: var(--pixel);
+  font-size: 0.95rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: var(--hud-glow);
 }
 
 .album-row {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
-  padding: 0.62rem 0 0.68rem;
-  border-top: 1px solid rgba(40, 32, 24, 0.22);
-  font-family: "Cormorant Garamond", "Times New Roman", serif;
+  gap: 0.28rem;
+  padding: 0.7rem 0 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  font-family: var(--pixel);
 }
 
 .album-row span {
-  font-size: 0.78rem;
-  letter-spacing: 0.16em;
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #5c5044;
+  color: rgba(255, 255, 255, 0.55);
 }
 
 .album-row input,
@@ -718,36 +639,47 @@ canvas {
   appearance: none;
   width: 100%;
   margin: 0;
-  padding: 0.1rem 0;
-  border: 0;
-  background-color: transparent;
-  color: #1c1814;
-  font-family: "Cormorant Garamond", "Times New Roman", serif;
-  font-size: 1.28rem;
+  padding: 0.35rem 0.55rem;
+  border: 3px solid rgba(255, 255, 255, 0.22);
+  background-color: rgba(255, 250, 240, 0.06);
+  color: #fff;
+  font-family: var(--pixel);
+  font-size: 0.95rem;
   font-style: normal;
-  font-weight: 500;
-  letter-spacing: 0.03em;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+
+.album-row em {
+  border: 0;
+  background: none;
+  padding: 0.1rem 0 0;
 }
 
 .album-row input:focus,
 .album-row select:focus {
   outline: none;
-  box-shadow: 0 1px 0 #8a6e48;
+  border-color: var(--brass);
+  background-color: rgba(255, 250, 240, 0.1);
 }
 
 .album-row input::placeholder {
-  color: rgba(28, 24, 20, 0.35);
-  font-style: italic;
+  color: rgba(255, 255, 255, 0.35);
+  text-transform: uppercase;
 }
 
 .album-row select {
   cursor: pointer;
-  padding-right: 1.1rem;
-  background-color: transparent;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%231c1814' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+  padding-right: 1.4rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%23ffffff' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 0.15rem center;
+  background-position: right 0.55rem center;
   background-size: 0.55rem;
+}
+
+.album-row select option {
+  background: #0a0806;
+  color: #fff;
 }
 
 .album-date {
@@ -758,13 +690,15 @@ canvas {
 
 .album-note {
   margin: 0.45rem 0 0;
-  font-family: "Cormorant Garamond", "Times New Roman", serif;
-  font-size: 1rem;
-  color: #3a3228;
+  font-family: var(--pixel);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.72);
 }
 
 .album-note.is-error {
-  color: #6b2f2a;
+  color: #e2a09a;
 }
 
 .album-confirm {
@@ -780,10 +714,11 @@ canvas {
 .album-confirm-lead {
   margin: 0.4rem 0 0;
   max-width: 34rem;
-  font-family: "Cormorant Garamond", "Times New Roman", serif;
-  font-size: 1.25rem;
-  line-height: 1.45;
-  color: #3a2c24;
+  font-family: var(--pixel);
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.82);
 }
 
 .album-strip {
@@ -792,27 +727,11 @@ canvas {
   display: flex;
   align-items: stretch;
   gap: 0;
-  margin: 0 0.2rem 0.2rem;
-  padding: 0.85rem 1.05rem 0.95rem 0;
-  background-color: #7d7688;
-  background-image:
-    radial-gradient(ellipse at 18% 20%, rgba(210, 200, 220, 0.22), transparent 52%),
-    radial-gradient(ellipse at 82% 90%, rgba(40, 28, 48, 0.32), transparent 55%),
-    repeating-linear-gradient(
-      118deg,
-      transparent 0 11px,
-      rgba(40, 30, 50, 0.08) 11px 12px
-    );
+  margin: 0;
+  padding: 0.75rem 0.85rem 0.85rem;
+  background: #000;
+  border-top: 3px solid rgba(255, 255, 255, 0.16);
   overflow: hidden;
-}
-
-.album-spiral {
-  flex-shrink: 0;
-  width: 2.7rem;
-  height: auto;
-  min-height: 7.2rem;
-  align-self: stretch;
-  margin: 0 -0.15rem 0 0.05rem;
 }
 
 .album-thumbs-wrap {
@@ -828,10 +747,10 @@ canvas {
   grid-auto-flow: row;
   gap: 3px;
   margin: 0;
-  padding: 3px;
+  padding: 0;
   list-style: none;
   overflow-x: auto;
-  background: rgba(236, 230, 218, 0.78);
+  background: transparent;
 }
 
 .album-thumb {
@@ -839,7 +758,8 @@ canvas {
   min-width: 4.05rem;
   aspect-ratio: 5 / 4;
   overflow: hidden;
-  background: #1c1a17;
+  background: #14110c;
+  border: 3px solid rgba(255, 255, 255, 0.16);
 }
 
 .album-thumb[draggable='true'] {
@@ -847,15 +767,14 @@ canvas {
 }
 
 .album-thumb.is-selected {
-  outline: 3px solid #e8d070;
-  box-shadow:
-    0 0 0 1px #fff3c2,
-    0 0 16px 3px rgba(232, 200, 80, 0.78);
+  border-color: var(--hud-btn-hover);
+  outline: none;
+  box-shadow: 0 0 12px rgba(168, 123, 60, 0.45);
   z-index: 1;
 }
 
 .album-thumb.error {
-  outline: 2px solid #8a2a28;
+  border-color: #8a2a28;
 }
 
 .album-thumb.processing {
@@ -870,18 +789,18 @@ canvas {
   height: 100%;
   padding: 0;
   border: 0;
-  background: #1c1a17;
-  color: #7a746c;
+  background: #14110c;
+  color: rgba(255, 255, 255, 0.38);
   cursor: pointer;
-  font-family: Cinzel, "Times New Roman", serif;
-  font-size: 1.4rem;
-  font-weight: 500;
-  letter-spacing: 0.04em;
+  font-family: var(--pixel);
+  font-size: 0.85rem;
+  font-weight: 400;
+  letter-spacing: 0.06em;
 }
 
 .album-thumb.is-empty button:hover:not(:disabled) {
-  color: #b8b0a6;
-  background: #35312c;
+  color: #fff;
+  background: #1c1814;
 }
 
 .album-thumb img,
@@ -890,15 +809,15 @@ canvas {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  background: #1a1612;
+  background: #0e0c0a;
 }
 
 .album-thumb-ph {
   display: grid;
   place-items: center;
   color: #efe8dc;
-  font-family: Cinzel, "Times New Roman", serif;
-  font-size: 1.1rem;
+  font-family: var(--pixel);
+  font-size: 0.95rem;
 }
 
 .create-file {
@@ -920,11 +839,11 @@ canvas {
 
   .album-chrome {
     flex-wrap: wrap;
-    gap: 0.2rem 0.8rem;
+    gap: 0.55rem 0.8rem;
   }
 
   .album-title {
-    font-size: 1.7rem;
+    font-size: 1.2rem;
   }
 
   .album-stage {
@@ -940,12 +859,13 @@ canvas {
 
 /* Intro gate */
 .name-gate {
+  --name-gate-control-h: 4.4rem;
   position: absolute;
   inset: 0;
-  z-index: 60;
+  z-index: 1100;
   display: grid;
   place-items: center;
-  padding: 1.5rem 1.2rem;
+  padding: 2rem 1.6rem;
   background: radial-gradient(
     circle at 50% 42%,
     rgba(20, 15, 10, 0.82) 0%,
@@ -962,21 +882,21 @@ canvas {
 }
 
 .name-gate-card {
-  width: min(26rem, 100%);
+  width: min(48rem, 100%);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.15rem;
+  gap: 0.2rem;
   text-align: center;
 }
 
 .name-gate-title {
-  margin: 0 0 1.6rem;
+  margin: 0 0 2.4rem;
   font-family: var(--pixel);
-  font-size: clamp(1rem, 3vw, 1.5rem);
+  font-size: clamp(2.4rem, 7vw, 4.2rem);
   font-weight: 400;
   letter-spacing: 0.08em;
-  line-height: 1.7;
+  line-height: 1.25;
   text-transform: uppercase;
   color: #fff;
   text-shadow: var(--hud-glow);
@@ -985,54 +905,90 @@ canvas {
 .name-gate-row {
   display: flex;
   align-items: stretch;
-  gap: 0.5rem;
-  width: 100%;
+  gap: 0.7rem;
+  width: min(40rem, 100%);
 }
 
-.name-gate-row input {
-  appearance: none;
+.name-gate-field,
+.name-gate-submit {
+  height: var(--name-gate-control-h);
+  box-sizing: border-box;
+  border: 3px solid rgba(255, 255, 255, 0.28);
+}
+
+.name-gate-field {
   flex: 1;
   min-width: 0;
-  padding: 0.7rem 0.8rem;
+  display: flex;
+  align-items: center;
+  padding: 0 1.25rem;
   background: rgba(255, 250, 240, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  font-family: var(--pixel);
-  font-weight: 400;
-  font-size: 1rem;
-  letter-spacing: 0.06em;
-  color: #fff;
   transition:
     border-color 0.2s ease,
     background 0.2s ease;
 }
 
-.name-gate-row input::placeholder {
-  color: rgba(255, 255, 255, 0.34);
-  font-size: 0.7rem;
-  text-transform: uppercase;
+.name-gate-field:focus-within {
+  background: rgba(255, 250, 240, 0.1);
 }
 
-.name-gate-row input:focus {
-  outline: none;
+.name-gate-row:focus-within .name-gate-field,
+.name-gate-row:focus-within .name-gate-submit {
   border-color: var(--brass);
-  background: rgba(255, 250, 240, 0.1);
+}
+
+.name-gate-field input {
+  appearance: none;
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-family: var(--pixel);
+  font-weight: 400;
+  font-size: clamp(1.35rem, 3.2vw, 1.85rem);
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-align: left;
+  text-transform: uppercase;
+  color: #fff;
+  /* Pixelify's caps sit high in the em box; nudge so they read as centered. */
+  transform: translateY(0.12em);
+}
+
+.name-gate-field input:focus {
+  outline: none;
+}
+
+.name-gate-field input::placeholder {
+  color: rgba(255, 255, 255, 0.42);
+  font-size: inherit;
+  letter-spacing: 0.08em;
+  line-height: inherit;
+  text-transform: uppercase;
 }
 
 .name-gate-submit {
   appearance: none;
-  border: var(--hud-btn-border);
-  background: rgba(138, 110, 72, 0.14);
-  color: var(--brass);
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  background: #000;
+  color: #fff;
   font-family: var(--pixel);
   font-weight: 400;
-  font-size: 0.7rem;
+  font-size: clamp(1.35rem, 3.2vw, 1.85rem);
   letter-spacing: 0.08em;
+  line-height: 1;
   text-transform: uppercase;
-  padding: 0.7rem 1.15rem;
+  padding: 0 1.6rem;
   white-space: nowrap;
   cursor: pointer;
   transition:
     background 0.2s ease,
+    border-color 0.2s ease,
     opacity 0.2s ease;
 }
 
@@ -1042,6 +998,6 @@ canvas {
 }
 
 .name-gate-submit:disabled {
-  opacity: 0.32;
+  opacity: 0.45;
   cursor: default;
 }
