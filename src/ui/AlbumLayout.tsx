@@ -42,12 +42,6 @@ export function AlbumLayout({
       role="presentation"
       onMouseDown={onBackdropMouseDown}
     >
-      <svg className="album-defs" aria-hidden="true" focusable="false">
-        <filter id="album-grain" x="0" y="0" width="100%" height="100%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch" />
-          <feColorMatrix type="saturate" values="0" />
-        </filter>
-      </svg>
       <div
         className="album"
         role="dialog"
@@ -70,7 +64,6 @@ export function AlbumLayout({
         </header>
 
         <div className="album-page">
-          <div className="album-page-grain" />
           {confirm ? (
             <div className="album-confirm">{confirm}</div>
           ) : (
@@ -81,55 +74,11 @@ export function AlbumLayout({
                 </div>
                 <div className="album-info">{info}</div>
               </div>
-              <div className="album-strip">
-                <AlbumSpiral />
-                {strip}
-              </div>
+              <div className="album-strip">{strip}</div>
             </>
           )}
         </div>
       </div>
     </div>
-  );
-}
-
-function AlbumSpiral() {
-  const coils = Array.from({ length: 8 }, (_, i) => i);
-  return (
-    <svg
-      className="album-spiral"
-      viewBox="0 0 44 224"
-      preserveAspectRatio="xMidYMid meet"
-      aria-hidden="true"
-      focusable="false"
-    >
-      {coils.map((i) => {
-        const cy = 16 + i * 27;
-        return (
-          <g key={i}>
-            <circle cx="22" cy={cy} r="6.2" fill="#1b1916" />
-            <circle cx="22" cy={cy} r="3.4" fill="#cfc8ba" />
-            <ellipse
-              cx="18"
-              cy={cy}
-              rx="15"
-              ry="9.5"
-              fill="none"
-              stroke="#0e0d0c"
-              strokeWidth="2.35"
-            />
-            <ellipse
-              cx="19"
-              cy={cy - 0.8}
-              rx="15"
-              ry="9.5"
-              fill="none"
-              stroke="#3d3a36"
-              strokeWidth="0.7"
-            />
-          </g>
-        );
-      })}
-    </svg>
   );
 }
