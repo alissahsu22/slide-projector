@@ -8,6 +8,7 @@ import { getCollection, toggleOrbitInspect, useExperience } from '../state/store
 import type { Collection } from '../types/collection';
 import { setAboutOpen, setHelpOpen, useAboutOpen } from './aboutState';
 import { useWebGLFailed } from './sceneStatus';
+import { useCoarsePointer } from './useCoarsePointer';
 
 function SpeakerIcon({ muted }: { muted: boolean }) {
   return (
@@ -61,19 +62,6 @@ function CloseIcon() {
       <rect x="5" y="5" width="1" height="1" />
       <rect x="6" y="6" width="1" height="1" />
     </svg>
-  );
-}
-
-/** Touch screens get tap wording; everything else gets click wording. */
-function useCoarsePointer(): boolean {
-  return useSyncExternalStore(
-    (notify) => {
-      const media = window.matchMedia('(pointer: coarse)');
-      media.addEventListener('change', notify);
-      return () => media.removeEventListener('change', notify);
-    },
-    () => window.matchMedia('(pointer: coarse)').matches,
-    () => false,
   );
 }
 

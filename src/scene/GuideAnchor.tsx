@@ -5,18 +5,20 @@ import { sceneApi } from '../experience/sceneApi';
 import { readGuideStep } from '../state/guide';
 import { getState } from '../state/store';
 import { setGuideAnchor, setGuideAvoid, type GuideRect } from '../ui/guideAnchor';
+import { setPlayTarget } from '../ui/playTarget';
 
 const _corner = new THREE.Vector3();
 const _button = new THREE.Vector3();
 
 type GuideSize = { w: number; h: number; d: number };
 
-/** Screen rect of the PLAY / EDIT billboards parented to this tape. */
+/** Screen rect of the PLAY / EDIT billboards parented to this tape, or just one. */
 function actionScreenRect(
   root: THREE.Object3D,
   camera: THREE.Camera,
   width: number,
   height: number,
+  only?: 'PLAY' | 'EDIT',
 ): GuideRect | null {
   let left = Infinity;
   let top = Infinity;
@@ -27,6 +29,7 @@ function actionScreenRect(
   root.traverse((child) => {
     const action = child.userData?.action;
     if (action !== 'PLAY' && action !== 'EDIT') return;
+    if (only && action !== only) return;
     const mesh = child.children.find((item): item is THREE.Mesh => (item as THREE.Mesh).isMesh);
     if (!mesh) return;
     if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
@@ -127,6 +130,19 @@ export function GuideAnchor() {
         : null,
     );
     setGuideAvoid(step === 'play' ? actionScreenRect(object, camera, size.width, size.height) : null);
+  });
+
+  return null;
+}
+
+/** Projects the selected tape's PLAY billboard so the HTML Play button can sit on it. */
+export function PlayAnchor() {
+  useEffect(() => () => setPlayTarget(null), []);
+
+  useFrame(({ camera, size }) => {
+    const id = getState().crateSelectedId;
+    const group = id ? (sceneApi.cartridges.get(id)?.group ?? null) : null;
+    setPlayTarget(group ? actionScreenRect(group, camera, size.width, size.height, 'PLAY') : null);
   });
 
   return null;

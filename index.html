@@ -10,15 +10,15 @@
       content="A little 3D room of Alissa Hsu's memories. Choose a tape from the crate, play it on the slide projector, and step through what's inside."
     />
     <meta name="theme-color" content="#0b0908" />
-    <link rel="canonical" href="https://alissahsu.com/projects/upstairs-room/" />
+    <link rel="canonical" href="https://www.alissahsu.com/projects/upstairs-room/" />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://alissahsu.com/projects/upstairs-room/" />
+    <meta property="og:url" content="https://www.alissahsu.com/projects/upstairs-room/" />
     <meta property="og:title" content="Upstairs — a room inside my head" />
     <meta
       property="og:description"
       content="A little 3D room of memories. Choose a tape, play it on the slide projector, and step through what's inside."
     />
-    <meta property="og:image" content="https://alissahsu.com/projects/upstairs-room/og-image.jpg" />
+    <meta property="og:image" content="https://www.alissahsu.com/projects/upstairs-room/og-image.jpg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="A crate of labelled tapes on a desk in a lamplit bedroom." />
@@ -28,7 +28,7 @@
       name="twitter:description"
       content="A little 3D room of memories. Choose a tape, play it on the slide projector, and step through what's inside."
     />
-    <meta name="twitter:image" content="https://alissahsu.com/projects/upstairs-room/og-image.jpg" />
+    <meta name="twitter:image" content="https://www.alissahsu.com/projects/upstairs-room/og-image.jpg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -48,9 +48,122 @@
         rel="stylesheet"
       />
     </noscript>
+    <!-- First paint, before the app's CSS and JS arrive: the intro's lamplit
+         void, so the room opens out of it instead of out of a blank page. -->
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #0b0908;
+      }
+      .boot {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-content: center;
+        gap: 1.1rem;
+        padding: 1.25rem;
+        text-align: center;
+        color: #f4efe6;
+        font: 400 16.5px/1.4 "Pixelify Sans", ui-monospace, monospace;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        background: radial-gradient(
+            ellipse 60% 55% at 50% 50%,
+            rgba(232, 197, 107, 0.09) 0%,
+            rgba(20, 15, 10, 0.62) 45%,
+            rgba(6, 5, 4, 0.95) 100%
+          ),
+          #0b0908;
+      }
+      .boot p {
+        margin: 0;
+      }
+      .boot-eyebrow {
+        color: #e8c56b;
+        letter-spacing: 0.22em;
+      }
+      .boot-more,
+      .boot-fail,
+      .boot[data-state] .boot-msg {
+        display: none;
+      }
+      .boot[data-state="slow"] .boot-msg,
+      .boot[data-state="slow"] .boot-more,
+      .boot[data-state="failed"] .boot-fail {
+        display: block;
+      }
+      .boot-retry {
+        margin-top: 0.9rem;
+        min-height: 2.75rem;
+        padding: 0.6rem 1.4rem;
+        font: inherit;
+        letter-spacing: inherit;
+        text-transform: inherit;
+        color: #0a0806;
+        background: #c9a05a;
+        border: 3px solid #0a0806;
+        cursor: pointer;
+      }
+      .boot-retry:hover {
+        background: #e8c56b;
+      }
+      .boot-retry:focus-visible {
+        outline: 2px solid #f4efe6;
+        outline-offset: 3px;
+      }
+    </style>
+    <noscript>
+      <style>
+        .boot-msg {
+          display: none;
+        }
+      </style>
+    </noscript>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- React replaces this when it mounts. -->
+      <div class="boot" role="status" aria-live="polite">
+        <p class="boot-eyebrow">A room inside my head</p>
+        <p class="boot-msg">Opening the room…</p>
+        <div class="boot-more">
+          <p>Still opening. Slow connections take a little longer.</p>
+          <button type="button" class="boot-retry" onclick="location.reload()">Reload</button>
+        </div>
+        <div class="boot-fail">
+          <p>The room didn’t open.</p>
+          <button type="button" class="boot-retry" onclick="location.reload()">Try again</button>
+        </div>
+        <noscript><p>The room needs JavaScript to open.</p></noscript>
+      </div>
+    </div>
+    <script>
+      // Never leave a visitor on the boot screen: offer a reload if the app is
+      // slow to arrive, and say so if its script fails to load or throws first.
+      (function () {
+        function boot() {
+          return document.querySelector('.boot');
+        }
+        function mark(state) {
+          var el = boot();
+          if (el && el.getAttribute('data-state') !== 'failed') el.setAttribute('data-state', state);
+        }
+        window.setTimeout(function () {
+          mark('slow');
+        }, 15000);
+        window.addEventListener(
+          'error',
+          function (event) {
+            if (!boot()) return;
+            var target = event.target;
+            if (event instanceof ErrorEvent || (target && target.tagName === 'SCRIPT')) mark('failed');
+          },
+          true,
+        );
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

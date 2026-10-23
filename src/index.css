@@ -73,7 +73,8 @@ body,
   height: 100%;
   margin: 0;
   overflow: hidden;
-  background: #0c121c;
+  /* The scene's clear colour, so nothing else shows before its first frame. */
+  background: #0b0908;
 }
 
 body {
@@ -1146,6 +1147,7 @@ canvas {
   line-height: 1.4;
   color: var(--paper);
   text-align: center;
+  text-wrap: balance;
 }
 
 .guide-skip {
@@ -1216,8 +1218,9 @@ canvas {
     rgba(20, 15, 10, 0.62) 45%,
     rgba(6, 5, 4, 0.95) 100%
   );
+  /* No fade-in: the boot screen in index.html already shows this vignette, so
+     fading from transparent would flash the bare scene through it. */
   backdrop-filter: blur(8px);
-  animation: intro-in 0.6s ease both;
 }
 
 /* Faint scanlines so the title screen reads as projected, not printed. */
@@ -1234,12 +1237,6 @@ canvas {
     transparent 3px
   );
   mix-blend-mode: multiply;
-}
-
-@keyframes intro-in {
-  from {
-    opacity: 0;
-  }
 }
 
 .intro-card {
@@ -1337,13 +1334,21 @@ canvas {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--paper);
-  opacity: 0.6;
+  opacity: 0.8;
   animation: intro-blink 1.6s 1.2s steps(2, jump-none) infinite;
 }
 
+/* The blink dims the line but never below legible. */
 @keyframes intro-blink {
   50% {
-    opacity: 0.15;
+    opacity: 0.55;
+  }
+}
+
+/* A key hint means nothing without a keyboard. */
+@media (pointer: coarse) {
+  .intro-hint {
+    display: none;
   }
 }
 
@@ -1446,6 +1451,45 @@ canvas {
   letter-spacing: var(--track-wide);
   text-transform: uppercase;
   color: var(--paper-faint);
+}
+
+.about-credits {
+  margin-top: 0.85rem;
+  font-family: var(--readable);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--paper-soft);
+}
+
+.about-credits h3 {
+  margin: 0 0 0.3rem;
+  font-family: var(--font-machine);
+  font-size: var(--machine-sm);
+  font-weight: 400;
+  letter-spacing: var(--track-wide);
+  text-transform: uppercase;
+  color: var(--paper-soft);
+}
+
+.about-body .about-credits p {
+  margin: 0 0 0.2rem;
+  font-size: inherit;
+  color: inherit;
+}
+
+.about-credits ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.about-credits a {
+  color: var(--gold);
+  text-underline-offset: 0.15em;
+}
+
+.about-credits a:hover {
+  color: var(--gold-pale);
 }
 
 .fallback {
@@ -1652,6 +1696,34 @@ canvas {
 .room-region:focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: -6px;
+}
+
+/* Laid over the PLAY billboard: invisible itself, it only draws the focus
+   ring, and the pointer passes through to the billboard underneath. */
+.play-button {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 15;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  appearance: none;
+  pointer-events: none;
+}
+
+.play-button:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+/* No billboard on screen to ring: stay reachable, just unseen. */
+.play-button[data-offscreen] {
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
 }
 
 .help-toggle {

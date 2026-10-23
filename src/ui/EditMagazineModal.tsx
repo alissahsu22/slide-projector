@@ -29,7 +29,8 @@ import {
   updateUserCollection,
   type EditPhotoEntry,
 } from '../storage/collectionService';
-import { AlbumLayout, albumSlotCount } from './AlbumLayout';
+import { AlbumLayout } from './AlbumLayout';
+import { albumSlotCount } from './albumSlots';
 
 const MONTHS = [
   'January',

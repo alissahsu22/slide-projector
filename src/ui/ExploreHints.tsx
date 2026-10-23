@@ -9,10 +9,12 @@ import {
   nextHintFloats,
   type GuideRect,
 } from './guideAnchor';
-
+import { useCoarsePointer } from './useCoarsePointer';
 
 /** Once a tape is chosen, the play note says the one thing left to do. */
 const PLAY_CHOSEN = 'Now press Play, or hit Enter.';
+/** Touch screens have no Enter key to offer. */
+const PLAY_CHOSEN_TOUCH = 'Now tap Play.';
 
 const MARGIN = 12;
 const GAP = 10;
@@ -165,6 +167,7 @@ export function ExploreHints() {
   const [dismissed, setDismissed] = useState<GuideStep | null>(null);
   const shown = step && step !== dismissed ? step : null;
   const progress = useGuideProgress();
+  const coarse = useCoarsePointer();
 
   // Progress moving on (or Help replaying the hints) brings notes back.
   useEffect(() => {
@@ -210,7 +213,8 @@ export function ExploreHints() {
   if (!shown) return null;
 
   const tutorial = shown !== 'empty-room';
-  const copy = shown === 'play' && chosen ? PLAY_CHOSEN : GUIDE_COPY[shown];
+  const copy =
+    shown === 'play' && chosen ? (coarse ? PLAY_CHOSEN_TOUCH : PLAY_CHOSEN) : GUIDE_COPY[shown];
 
   return (
     <div className="guide-layer">

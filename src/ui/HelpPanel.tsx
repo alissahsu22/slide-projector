@@ -3,6 +3,7 @@ import { pauseAutoplay, resumeAutoplay } from '../experience/controller';
 import { replayGuide } from '../state/guide';
 import { setHelpOpen, useHelpOpen } from './aboutState';
 import { useWebGLFailed } from './sceneStatus';
+import { useCoarsePointer } from './useCoarsePointer';
 import { useDialogFocus } from './useDialogFocus';
 
 type Control = {
@@ -17,27 +18,44 @@ type ControlGroup = {
   rows: Control[];
 };
 
-/** Every row here is wired up. Add a key to this list only once it works. */
-const GROUPS: ControlGroup[] = [
-  {
-    title: 'In the room',
-    rows: [
-      { action: 'Choose a tape', keys: ['←', '→'], note: 'or click or tap it' },
-      { action: 'Play it', keys: ['Enter'], note: 'or double-click' },
-      { action: 'Shelve a tape', keys: ['←', '→', 'Enter'], note: 'or drag or tap it, with the shelf open' },
-      { action: 'Look around', keys: ['Esc'], note: 'drag to turn, pinch or scroll to zoom, two-finger or right-drag to pan' },
-    ],
-  },
-  {
-    title: 'Playing a tape',
-    rows: [
-      { action: 'Pause', keys: ['Space'] },
-      { action: 'Previous / next', keys: ['←', '→'] },
-      { action: 'Start over', keys: ['R'] },
-      { action: 'Back to the room', keys: ['Esc'] },
-    ],
-  },
-];
+/**
+ * Every row here is wired up. Add a key to this list only once it works. Notes
+ * name the gestures of the pointer in hand: taps on touch, clicks otherwise.
+ */
+function roomGroups(coarse: boolean): ControlGroup[] {
+  const press = coarse ? 'tap' : 'click';
+  return [
+    {
+      title: 'In the room',
+      rows: [
+        { action: 'Choose a tape', keys: ['←', '→'], note: `or ${press} it` },
+        {
+          action: 'Play it',
+          keys: ['Enter'],
+          note: coarse ? 'or tap Play' : 'or click Play, or double-click the tape',
+        },
+        { action: 'Shelve a tape', keys: ['←', '→', 'Enter'], note: `or drag or ${press} it, with the shelf open` },
+        {
+          action: 'Look around',
+          keys: [],
+          note: coarse
+            ? 'tap View room, then drag to turn, pinch to zoom, two-finger drag to pan'
+            : 'click View room, then drag to turn, scroll to zoom, right-drag to pan',
+        },
+        { action: 'Leave the view', keys: ['Esc'], note: `or ${press} Exit view` },
+      ],
+    },
+    {
+      title: 'Playing a tape',
+      rows: [
+        { action: 'Pause', keys: ['Space'] },
+        { action: 'Previous / next', keys: ['←', '→'] },
+        { action: 'Start over', keys: ['R'] },
+        { action: 'Back to the room', keys: ['Esc'] },
+      ],
+    },
+  ];
+}
 
 /** The flat browser shown when the 3D room can't start. */
 const FALLBACK_GROUPS: ControlGroup[] = [
@@ -61,6 +79,7 @@ export function HelpPanel() {
   const open = useHelpOpen();
   const webglFailed = useWebGLFailed();
   const panelRef = useRef<HTMLDivElement>(null);
+  const coarse = useCoarsePointer();
   useDialogFocus(open, panelRef);
 
   useEffect(() => {
@@ -80,7 +99,7 @@ export function HelpPanel() {
 
   if (!open) return null;
 
-  const groups = webglFailed ? FALLBACK_GROUPS : GROUPS;
+  const groups = webglFailed ? FALLBACK_GROUPS : roomGroups(coarse);
 
   return (
     <div
@@ -124,7 +143,7 @@ export function HelpPanel() {
                   <tr key={row.action}>
                     <th scope="row">{row.action}</th>
                     <td>
-                      <Keys keys={row.keys} />
+                      {row.keys.length > 0 && <Keys keys={row.keys} />}
                       {row.note && <span className="help-note">{row.note}</span>}
                     </td>
                   </tr>

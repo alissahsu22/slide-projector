@@ -1,6 +1,6 @@
 import { OrbitControls } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
-import { useLayoutEffect, useRef } from 'react';
+import { useCallback, useLayoutEffect, useRef } from 'react';
 import { PerspectiveCamera, Vector3 } from 'three';
 import { fitPoseToAspect, getCatalogCam, type CameraPose } from '../experience/layout';
 import { sceneApi } from '../experience/sceneApi';
@@ -56,31 +56,39 @@ const ORBIT_OVERVIEW: CameraPose = {
 };
 
 export function CameraController() {
-  const { camera, size } = useThree();
+  const camera = useThree((s) => s.camera);
+  // Read the size when a pose is applied rather than subscribing to it: a
+  // resize must not snap the camera back to the catalog or overview shot.
+  const getThree = useThree((s) => s.get);
   const lastFov = useRef(cameraRig.fov);
   const orbitInspect = useExperience((s) => s.orbitInspect);
 
-  function applyPose(pose: CameraPose, aspect: number, fit = 1) {
-    const fitted = blendFit(pose, fitPoseToAspect(pose, aspect), fit);
-    camera.position.set(fitted.px, fitted.py, fitted.pz);
-    camera.lookAt(fitted.tx, fitted.ty, fitted.tz);
-    if (camera instanceof PerspectiveCamera && Math.abs(fitted.fov - lastFov.current) > 0.01) {
-      camera.fov = fitted.fov;
-      camera.updateProjectionMatrix();
-      lastFov.current = fitted.fov;
-    }
-  }
+  const applyPose = useCallback(
+    (pose: CameraPose, aspect: number, fit = 1) => {
+      const fitted = blendFit(pose, fitPoseToAspect(pose, aspect), fit);
+      camera.position.set(fitted.px, fitted.py, fitted.pz);
+      camera.lookAt(fitted.tx, fitted.ty, fitted.tz);
+      if (camera instanceof PerspectiveCamera && Math.abs(fitted.fov - lastFov.current) > 0.01) {
+        camera.fov = fitted.fov;
+        camera.updateProjectionMatrix();
+        lastFov.current = fitted.fov;
+      }
+    },
+    [camera],
+  );
 
   useLayoutEffect(() => {
     const pose = getCatalogCam();
     Object.assign(cameraRig, pose);
-    applyPose(pose, size.width / size.height);
-  }, [camera]);
+    const { width, height } = getThree().size;
+    applyPose(pose, width / height);
+  }, [applyPose, getThree]);
 
   useLayoutEffect(() => {
     if (!orbitInspect) return;
-    applyPose(ORBIT_OVERVIEW, size.width / size.height);
-  }, [orbitInspect, camera]);
+    const { width, height } = getThree().size;
+    applyPose(ORBIT_OVERVIEW, width / height);
+  }, [orbitInspect, applyPose, getThree]);
 
   useFrame((state, delta) => {
     if (getState().orbitInspect) return;

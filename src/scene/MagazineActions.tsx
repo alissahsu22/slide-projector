@@ -2,7 +2,7 @@ import { Billboard, useCursor } from '@react-three/drei';
 import gsap from 'gsap';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { requestInsert } from '../experience/controller';
+import { requestPlay } from '../experience/controller';
 import { setCrateSelected, setEditingId } from '../state/store';
 import type { Collection } from '../types/collection';
 
@@ -14,6 +14,12 @@ const POP_ABOVE = 0.03;
 const TUCK_INTO = 0.014;
 /** Sit the bar above the pivot so it grows up, not down over the spines. */
 const BAR_LIFT = BTN_H / 2;
+/**
+ * The hit area reaches down into the gap above the tape, so a click just under
+ * the key still presses it instead of missing everything and deselecting. It
+ * stops short of the tape (POP_ABOVE) and doesn't widen into the EDIT key.
+ */
+const HIT_REACH_DOWN = BTN_H * 0.6;
 
 function drawActionFace(
   label: string,
@@ -109,6 +115,18 @@ function ActionButton({ label, idle, hoverTex, position, onPress }: ActionButton
           transparent
           depthTest={false}
           depthWrite={false}
+        />
+      </mesh>
+      {/* After the face, which GuideAnchor measures as the first mesh. */}
+      <mesh position={[0, -HIT_REACH_DOWN / 2, 0]}>
+        <planeGeometry args={[BTN_W, BTN_H + HIT_REACH_DOWN]} />
+        <meshBasicMaterial
+          transparent
+          opacity={0}
+          side={THREE.DoubleSide}
+          depthTest={false}
+          depthWrite={false}
+          colorWrite={false}
         />
       </mesh>
     </group>
@@ -231,7 +249,7 @@ export function MagazineActions({ collection, trayW, trayH, selected }: Props) {
           idle={loadIdle}
           hoverTex={loadHover}
           position={[loadX, BAR_LIFT, 0]}
-          onPress={() => void requestInsert(collection.id)}
+          onPress={() => requestPlay(collection.id)}
         />
         {showEdit && (
           <ActionButton

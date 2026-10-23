@@ -15,7 +15,8 @@ import type { ProcessedPhoto } from '../lib/images/types';
 import { objectUrlFor, revokeObjectUrl } from '../media/objectUrls';
 import { persistUserCollection } from '../storage/collectionService';
 import { addArrivingCollection, setCreateOpen } from '../state/store';
-import { AlbumLayout, albumSlotCount } from './AlbumLayout';
+import { AlbumLayout } from './AlbumLayout';
+import { albumSlotCount } from './albumSlots';
 
 const MONTHS = [
   'January',

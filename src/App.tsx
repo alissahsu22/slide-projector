@@ -3,7 +3,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import {
   changeSlide,
   requestEject,
-  requestInsert,
+  requestPlay,
   restartCollection,
   togglePause,
 } from './experience/controller';
@@ -29,6 +29,8 @@ import { isPanelOpen } from './ui/aboutState';
 import { HelpPanel } from './ui/HelpPanel';
 import { focusRoom, ROOM_ID } from './ui/roomFocus';
 import { PlaybackControls } from './ui/PlaybackControls';
+import { PlayButton } from './ui/PlayButton';
+import { isPlayButtonFocused } from './ui/playTarget';
 import { Overlay } from './ui/Overlay';
 import { isWebGLFailed, setSceneLoading } from './ui/sceneStatus';
 import { preloadSoundFiles, unlockAudio } from './audio/sounds';
@@ -210,11 +212,16 @@ export default function App() {
   useEffect(() => {
     if (!crateSelectedId) return;
 
-    let timer = window.setTimeout(() => setCrateSelected(null), CRATE_IDLE_MS);
-    const bump = () => {
-      window.clearTimeout(timer);
-      timer = window.setTimeout(() => setCrateSelected(null), CRATE_IDLE_MS);
+    // A keyboard user resting on the Play button is still choosing.
+    const expire = () => {
+      if (isPlayButtonFocused()) bump();
+      else setCrateSelected(null);
     };
+    let timer = window.setTimeout(expire, CRATE_IDLE_MS);
+    function bump() {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(expire, CRATE_IDLE_MS);
+    }
     window.addEventListener('pointerdown', bump);
     window.addEventListener('keydown', bump);
     return () => {
@@ -258,7 +265,7 @@ export default function App() {
         const id = state.crateSelectedId ?? playableTapeId();
         if (!id) return;
         event.preventDefault();
-        void requestInsert(id);
+        requestPlay(id);
       } else if (event.key === ' ') {
         event.preventDefault();
         togglePause();
@@ -295,6 +302,8 @@ export default function App() {
           brings you back to the room.
         </p>
       </div>
+      {/* Straight after the room in tab order: choose a tape, Tab, Enter. */}
+      {entered && <PlayButton />}
       <SceneLoader />
       {entered && (
         <>

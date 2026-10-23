@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { CC_BY_4, MODEL_CREDITS } from '../data/credits';
 import { pauseAutoplay, resumeAutoplay } from '../experience/controller';
 import { setAboutOpen, useAboutOpen } from './aboutState';
 import { useDialogFocus } from './useDialogFocus';
@@ -62,6 +63,26 @@ export function AboutRoom() {
           <p>Pick any tape and stay a while. There’s no wrong place to start.</p>
           <p className="about-sign">— Alissa</p>
           <p className="about-credit">Made by Alissa Hsu</p>
+          <section className="about-credits" aria-labelledby="about-credits-title">
+            <h3 id="about-credits-title">Credits</h3>
+            <p>
+              3D models under{' '}
+              <a href={CC_BY_4} target="_blank" rel="noreferrer">
+                CC BY 4.0
+              </a>
+              , compressed for the web:
+            </p>
+            <ul>
+              {MODEL_CREDITS.map((credit) => (
+                <li key={credit.source}>
+                  <a href={credit.source} target="_blank" rel="noreferrer">
+                    {credit.title}
+                  </a>{' '}
+                  by {credit.author}
+                </li>
+              ))}
+            </ul>
+          </section>
         </div>
       </div>
     </div>

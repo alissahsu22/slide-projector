@@ -29,14 +29,9 @@ The pipeline deliberately leaves mesh, node and material merging off, because sc
 
 ## Sounds
 
-Mechanical audio is synthesized. To replace it, add WAV files:
+Sound is currently off: `SOUND_ENABLED` in `src/audio/enabled.ts` is `false`, which silences music and effects, hides the sound toggle, and skips loading any audio.
 
-- `public/sounds/pickup.wav`
-- `public/sounds/insert.wav`
-- `public/sounds/advance.wav`
-- `public/sounds/reverse.wav`
-- `public/sounds/rewind.wav`
-- `public/sounds/eject.wav`
+When it's on, the slide advance and reverse use `public/sounds/slide-click.m4a`, the switch uses `public/sounds/switch.mp3`, and the music is `public/sounds/warm-nights.m4a`. Pickup, insert, rewind and eject are synthesized. To replace one with a recording, add the file to `public/sounds/` and map it in `SOUND_FILES` in `src/audio/sounds.ts`.
 
 ## Upload pipeline
 
@@ -56,7 +51,7 @@ npx vercel --prod
 
 Or import `alissahsu22/slide-projector` in the Vercel dashboard. No environment variables are required for the built-in tape.
 
-The site lives at `alissahsu.com/projects/upstairs-room/`, so `vite.config.ts` sets `base` to that path. Load files from `public/` through `publicUrl()` rather than a bare `/path`, or they 404 under the subpath. The main site's `vercel.json` proxies the path here:
+The room lives at `https://www.alissahsu.com/projects/upstairs-room/`, a path on the portfolio site `https://www.alissahsu.com/` (the bare `alissahsu.com` redirects to `www`), so `vite.config.ts` sets `base` to that path. Load files from `public/` through `publicUrl()` rather than a bare `/path`, or they 404 under the subpath. The main site's `vercel.json` proxies the path here:
 
 ```json
 { "rewrites": [
@@ -77,3 +72,15 @@ The **?** key in the toolbar opens the same list in the room.
 - Shelf: drag tapes between the shelf and the crate, or click/tap one to send it across; with the keyboard, `←` `→` pick a tape and `Enter` moves it
 - View room: drag to turn, scroll or pinch to zoom, right-drag or two-finger drag to pan; `Esc` exits
 - Reduced motion: camera flights and the shelf flight become short fades
+
+## Credits
+
+These 3D models are by other creators under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The copies in `public/models/` are compressed, with resized textures. The same list appears in the room's About panel and lives in `src/data/credits.ts`.
+
+- [Book Shelf](https://sketchfab.com/3d-models/book-shelf-eb8f9728cd9347f4b67adaaf4db1abca) by Darren McNerney 3D
+- [Grey Carpet](https://sketchfab.com/3d-models/grey-carpet-640126c0558f4e77924c44c79936655d) by mrfunnysheep
+- [Curtains](https://sketchfab.com/3d-models/curtains-a17ace804737479981f4d96350b0fb37) by VisuTech
+- [Old Door](https://sketchfab.com/3d-models/old-door-f2f77bd326c9486eaee65b87e84e9be9) by Game Ready Art
+- [Plush Unicorn](https://sketchfab.com/3d-models/plush-unicorn-fd6f044ab8164a7e947f69fbe58435ee) by C.U.V
+
+No source is recorded yet for the bed, the projector (`models-src/` files exported from Blender, without the original author metadata), the music and sound samples in `public/sounds/`, or the wallpaper, ceiling and window textures in `public/`.

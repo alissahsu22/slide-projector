@@ -693,6 +693,20 @@ export async function requestInsert(id: string): Promise<void> {
   }
 }
 
+/**
+ * Play, from any of its doors — the PLAY billboard, the HTML button laid over
+ * it, or Enter in the room. Only a tape in the crate plays, and never while a
+ * flight, dialog or the shelf has the room; requestInsert then drops repeats.
+ */
+export function requestPlay(id: string): void {
+  const s = getState();
+  if (!s.collectionIds.includes(id)) return;
+  if (s.deletingId === id || s.arrivingId === id) return;
+  if (s.mode === 'CURATING' || s.createOpen || s.editingId) return;
+  if (isInteractionLocked()) return;
+  void requestInsert(id);
+}
+
 export async function requestEject(): Promise<void> {
   const { insertedId, selectedCollectionId, mode } = getState();
   if ((!insertedId && !selectedCollectionId) || sequenceLock) return;

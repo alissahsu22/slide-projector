@@ -12,7 +12,7 @@ import { CameraController } from './CameraController';
 import { CartridgeCrate } from './CartridgeCrate';
 import { Cartridges } from './Cartridges';
 import { DragController } from './DragController';
-import { GuideAnchor } from './GuideAnchor';
+import { GuideAnchor, PlayAnchor } from './GuideAnchor';
 import { LightingController } from './LightingController';
 import { ProjectionScreen } from './ProjectionScreen';
 import { Projector } from './Projector';
@@ -93,6 +93,7 @@ export function Experience() {
       <fog attach="fog" args={['#0b0908', 16, 32]} />
       <CameraController />
       <GuideAnchor />
+      <PlayAnchor />
       <DragController />
       <LightingController />
       <Room />

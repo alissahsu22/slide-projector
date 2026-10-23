@@ -12,16 +12,12 @@ export type SoundName =
   | 'switch';
 
 /**
- * Drop replacement WAVs in /public/sounds at these paths to override the
- * synthesized mechanical sounds. Several names may share one file.
+ * Recorded samples in /public/sounds. Names left out here stay synthesized;
+ * add a file and an entry to replace one. Several names may share one file.
  */
-export const SOUND_FILES: Record<SoundName, string> = {
-  pickup: publicUrl('sounds/pickup.wav'),
-  insert: publicUrl('sounds/insert.wav'),
+export const SOUND_FILES: Partial<Record<SoundName, string>> = {
   advance: publicUrl('sounds/slide-click.m4a'),
   reverse: publicUrl('sounds/slide-click.m4a'),
-  rewind: publicUrl('sounds/rewind.wav'),
-  eject: publicUrl('sounds/eject.wav'),
   switch: publicUrl('sounds/switch.mp3'),
 };
 
@@ -261,6 +257,7 @@ export async function preloadSoundFiles(): Promise<void> {
   const byUrl = new Map<string, SoundName[]>();
   for (const name of Object.keys(SOUND_FILES) as SoundName[]) {
     const url = SOUND_FILES[name];
+    if (!url) continue;
     const names = byUrl.get(url);
     if (names) names.push(name);
     else byUrl.set(url, [name]);
