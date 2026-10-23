@@ -9,7 +9,7 @@ import { Bed } from './Bed';
 import { Bookshelf } from './Bookshelf';
 import { Carpet } from './Carpet';
 import { CeilingLight } from './CeilingLight';
-import { Door, DoorVoid } from './Door';
+import { Door } from './Door';
 import { DOOR } from './doorDims';
 import { PlushUnicorn } from './PlushUnicorn';
 import {
@@ -26,16 +26,39 @@ import { WINDOW_H, WINDOW_W } from './windowDims';
 
 const WALLPAPER_TILE = 1.5;
 
-function makeWallpaper(width: number, height: number): THREE.Texture {
-  const tex = new THREE.TextureLoader().load('/wallpaper.png');
+function configureMap(tex: THREE.Texture): void {
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.wrapS = THREE.RepeatWrapping;
   tex.wrapT = THREE.RepeatWrapping;
-  // Square tiles: rounding either axis to a whole number would stretch the
-  // pattern and make it disagree with the neighbouring wall at the corner.
-  tex.repeat.set(width / WALLPAPER_TILE, height / WALLPAPER_TILE);
   tex.anisotropy = 8;
+}
+
+function tiledClone(base: THREE.Texture, width: number, height: number, tile: number): THREE.Texture {
+  const tex = base.clone();
+  tex.repeat.set(width / tile, height / tile);
   return tex;
+}
+
+function makeWallpaperFamily(): {
+  back: THREE.Texture;
+  front: THREE.Texture;
+  side: THREE.Texture;
+} {
+  const back = new THREE.Texture();
+  configureMap(back);
+  const front = tiledClone(back, ROOM_W, ROOM_H, WALLPAPER_TILE);
+  const side = tiledClone(back, ROOM_D, ROOM_H, WALLPAPER_TILE);
+  back.repeat.set(ROOM_W / WALLPAPER_TILE, ROOM_H / WALLPAPER_TILE);
+  new THREE.TextureLoader().load('/wallpaper.png', (loaded) => {
+    const image = loaded.image;
+    back.image = image;
+    front.image = image;
+    side.image = image;
+    back.needsUpdate = true;
+    front.needsUpdate = true;
+    side.needsUpdate = true;
+  });
+  return { back, front, side };
 }
 
 /** Width of one ceiling mural tile in metres; height follows the image aspect. */
@@ -57,9 +80,7 @@ function makeCeilingPaper(width: number, depth: number): THREE.Texture {
 
 export function Room() {
   const ceilingPaper = useMemo(() => makeCeilingPaper(ROOM_W, ROOM_D), []);
-  const backPaper = useMemo(() => makeWallpaper(ROOM_W, ROOM_H), []);
-  const frontPaper = useMemo(() => makeWallpaper(ROOM_W, ROOM_H), []);
-  const sidePaper = useMemo(() => makeWallpaper(ROOM_D, ROOM_H), []);
+  const wallpaper = useMemo(() => makeWallpaperFamily(), []);
 
   return (
     <group
@@ -75,7 +96,7 @@ export function Room() {
       <Ceiling map={ceilingPaper} />
       <CeilingLight />
 
-      <BackWall map={backPaper} />
+      <BackWall map={wallpaper.back} />
 
       <mesh
         position={[-ROOM_HALF_W, ROOM_H / 2, ROOM_MID_Z]}
@@ -83,7 +104,7 @@ export function Room() {
         receiveShadow
       >
         <planeGeometry args={[ROOM_D, ROOM_H]} />
-        <meshStandardMaterial map={sidePaper} roughness={0.94} color="#ffffff" />
+        <meshStandardMaterial map={wallpaper.side} roughness={0.94} color="#ffffff" />
       </mesh>
 
       <mesh
@@ -92,13 +113,13 @@ export function Room() {
         receiveShadow
       >
         <planeGeometry args={[ROOM_D, ROOM_H]} />
-        <meshStandardMaterial map={sidePaper} roughness={0.94} color="#f6f6f6" />
+        <meshStandardMaterial map={wallpaper.side} roughness={0.94} color="#f6f6f6" />
       </mesh>
 
       {/* Faces into the room, so it only shows when orbiting past the back wall. */}
       <mesh position={[0, ROOM_H / 2, ROOM_FRONT_Z]} rotation={[0, Math.PI, 0]} receiveShadow>
         <planeGeometry args={[ROOM_W, ROOM_H]} />
-        <meshStandardMaterial map={frontPaper} roughness={0.94} color="#f2f2f2" />
+        <meshStandardMaterial map={wallpaper.front} roughness={0.94} color="#f2f2f2" />
       </mesh>
 
       <WithWall axis="z" side={1} at={WALL_Z}>
@@ -106,7 +127,6 @@ export function Room() {
         <Suspense fallback={null}>
           <Door />
         </Suspense>
-        <DoorVoid />
       </WithWall>
 
       <WithWall axis="x" side={1} at={-ROOM_HALF_W}>

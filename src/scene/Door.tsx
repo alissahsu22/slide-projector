@@ -57,16 +57,3 @@ export function Door() {
     </group>
   );
 }
-
-/** Pitch-black volume behind the opening so the doorway reads as a void. */
-export function DoorVoid() {
-  return (
-    <mesh
-      position={[DOOR.x, DOOR.holeH / 2, DOOR.z - 0.9]}
-      renderOrder={-1}
-    >
-      <boxGeometry args={[DOOR.holeW + 0.35, DOOR.holeH + 0.35, 1.6]} />
-      <meshBasicMaterial color="#000000" toneMapped={false} fog={false} />
-    </mesh>
-  );
-}

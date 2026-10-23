@@ -14,6 +14,7 @@ import { LightingController } from './LightingController';
 import { ProjectionScreen } from './ProjectionScreen';
 import { Projector } from './Projector';
 import { Room } from './Room';
+import { VoidMist } from './VoidMist';
 
 export function Experience() {
   return (
@@ -52,12 +53,13 @@ export function Experience() {
         setCrateSelected(null);
       }}
     >
-      <color attach="background" args={['#000000']} />
-      <fog attach="fog" args={['#000000', 16, 32]} />
+      <color attach="background" args={['#0b0908']} />
+      <fog attach="fog" args={['#0b0908', 16, 32]} />
       <CameraController />
       <DragController />
       <LightingController />
       <Room />
+      <VoidMist />
       <Suspense fallback={null}>
         <Projector />
         <Cartridges />

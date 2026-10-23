@@ -9,7 +9,7 @@ import { CEILING_PANEL, ROOM_H } from './roomDims';
 
 // ─── Tuning constants — edit these to adjust the feel ────────────────────────
 // Target feel: dim liminal bedroom — warm orange tungsten, soft ceiling pool,
-// corners in shadow. Dust motes only — no milky distance fog.
+// corners in shadow. The black around the shell is a void; VoidMist hazes it.
 
 // Ambient — enough that black magazine labels stay readable up close
 const AMB_COLOR = '#f0c090';
@@ -65,17 +65,19 @@ const SCREEN_BOUNCE_OUT = 0.6;
 const TABLE_SPILL_COLOR = '#f2ca88';
 const TABLE_SPILL_SCALE = 0.32;
 
-// Fog — kept far so the room stays crisp; only a hint in playback for the beam
-const FOG_CATALOG = new THREE.Color('#000000');
-const FOG_PLAYBACK = new THREE.Color('#000000');
+// Fog — kept out of the shell so the room stays crisp. In the overview it
+// starts just past the far wall and eases the shell into the same warm black
+// the mist fades toward.
+const FOG_CATALOG = new THREE.Color('#0b0908');
+const FOG_PLAYBACK = new THREE.Color('#0b0908');
 const FOG_MIX = new THREE.Color();
 const FOG_NEAR_CATALOG = 16;
 const FOG_FAR_CATALOG = 32;
 const FOG_NEAR_PLAYBACK = 7;
 const FOG_FAR_PLAYBACK = 18;
-const FOG_NEAR_ORBIT = 22;
-const FOG_FAR_ORBIT = 48;
-const VOID = new THREE.Color('#000000');
+const FOG_NEAR_ORBIT = 11;
+const FOG_FAR_ORBIT = 24;
+const VOID = new THREE.Color('#0b0908');
 
 // Tone mapping — catalog bright enough to read spines, darker in playback
 const TM_BASE = 0.5;
