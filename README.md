@@ -60,8 +60,8 @@ The site lives at `alissahsu.com/projects/upstairs-room/`, so `vite.config.ts` s
 
 ```json
 { "rewrites": [
-  { "source": "/projects/upstairs-room", "destination": "https://upstairs-room.vercel.app/projects/upstairs-room/" },
-  { "source": "/projects/upstairs-room/:path*", "destination": "https://upstairs-room.vercel.app/projects/upstairs-room/:path*" }
+  { "source": "/projects/upstairs-room", "destination": "https://slide-projector.vercel.app/projects/upstairs-room/" },
+  { "source": "/projects/upstairs-room/:path*", "destination": "https://slide-projector.vercel.app/projects/upstairs-room/:path*" }
 ] }
 ```
 
