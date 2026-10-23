@@ -5,6 +5,7 @@
   "outputDirectory": "dist",
   "rewrites": [
     { "source": "/projects/upstairs-room", "destination": "/index.html" },
+    { "source": "/projects/upstairs-room/", "destination": "/index.html" },
     { "source": "/projects/upstairs-room/:path*", "destination": "/:path*" }
   ]
 }
