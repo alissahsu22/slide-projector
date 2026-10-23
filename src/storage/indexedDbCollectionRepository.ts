@@ -5,7 +5,7 @@ import type {
   StoredPhoto,
 } from './types';
 
-const DB_NAME = 'slide-projector';
+const DB_NAME = 'upstairs';
 const DB_VERSION = 1;
 const COLLECTIONS = 'collections';
 const PHOTOS = 'photos';

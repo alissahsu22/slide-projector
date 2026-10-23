@@ -98,9 +98,18 @@ function ActionButton({ label, idle, hoverTex, position, onPress }: ActionButton
         onPress();
       }}
     >
-      <mesh>
+      {/* Transparent so it joins the pass the screen's layers draw in, and a high
+          renderOrder puts it last there. No depth test, so nothing can hide it. */}
+      <mesh renderOrder={1000}>
         <planeGeometry args={[BTN_W, BTN_H]} />
-        <meshBasicMaterial map={texture} toneMapped={false} side={THREE.DoubleSide} />
+        <meshBasicMaterial
+          map={texture}
+          toneMapped={false}
+          side={THREE.DoubleSide}
+          transparent
+          depthTest={false}
+          depthWrite={false}
+        />
       </mesh>
     </group>
   );
@@ -126,11 +135,11 @@ export function MagazineActions({ collection, trayW, trayH, selected }: Props) {
   }, []);
 
   const loadIdle = useMemo(
-    () => makeActionTexture('LOAD', fontsReady, false),
+    () => makeActionTexture('PLAY', fontsReady, false),
     [fontsReady],
   );
   const loadHover = useMemo(
-    () => makeActionTexture('LOAD', fontsReady, true),
+    () => makeActionTexture('PLAY', fontsReady, true),
     [fontsReady],
   );
   const editIdle = useMemo(
@@ -218,7 +227,7 @@ export function MagazineActions({ collection, trayW, trayH, selected }: Props) {
     >
       <Billboard follow>
         <ActionButton
-          label="LOAD"
+          label="PLAY"
           idle={loadIdle}
           hoverTex={loadHover}
           position={[loadX, BAR_LIFT, 0]}

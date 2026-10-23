@@ -1,6 +1,7 @@
-const KEY = 'slide-projector:progress';
-const CURATION_KEY = 'slide-projector:curation';
-const VIEWER_KEY = 'slide-projector:viewer';
+const KEY = 'upstairs:progress';
+const CURATION_KEY = 'upstairs:curation';
+const VIEWER_KEY = 'upstairs:viewer';
+const ENTERED_KEY = 'upstairs:entered';
 
 /** Length the crate stamp can still letter-space without shrinking to nothing. */
 export const VIEWER_NAME_MAX = 18;
@@ -66,7 +67,24 @@ export function saveCuration(curation: Curation): void {
   }
 }
 
-/** Null until the visitor has introduced themselves, which gates the room. */
+/** True once the visitor has chosen to enter on this version of the room. */
+export function loadEntered(): boolean {
+  try {
+    return localStorage.getItem(ENTERED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function saveEntered(): void {
+  try {
+    localStorage.setItem(ENTERED_KEY, '1');
+  } catch {
+    // Private browsing — they'll see the introduction again next visit.
+  }
+}
+
+/** Optional crate stamp. The room no longer waits on a name to open. */
 export function loadViewerName(): string | null {
   try {
     const raw = localStorage.getItem(VIEWER_KEY);

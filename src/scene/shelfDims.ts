@@ -4,6 +4,7 @@ import {
   type MagazinePose,
 } from '../experience/layout';
 import { ROOM_FRONT_Z, ROOM_HALF_W } from './roomDims';
+import { publicUrl } from '../lib/publicUrl';
 
 /**
  * Sketchfab bookshelf, measured off the loaded scene rather than the raw mesh:
@@ -11,7 +12,7 @@ import { ROOM_FRONT_Z, ROOM_HALF_W } from './roomDims';
  * gets a unit that already stands on y = 0 with its open front on −z.
  */
 export const SHELF_MODEL = {
-  url: '/models/book_shelf.glb',
+  url: publicUrl('models/book_shelf.glb'),
   height: 4.378,
   halfX: 1.3777,
   /** Standing surface of each compartment, bottom to top. */

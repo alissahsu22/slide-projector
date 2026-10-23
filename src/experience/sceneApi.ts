@@ -22,6 +22,8 @@ export const sceneApi = {
   cartridges: new Map<string, CartridgeHandle>(),
   projector: null as Group | null,
   crate: null as Group | null,
+  /** The "add a tape" card in the crate, used to anchor an empty-room hint. */
+  addSlot: null as Group | null,
   insertionPoint: null as Group | null,
   lever: null as Group | null,
   lamp: null as Mesh | null,

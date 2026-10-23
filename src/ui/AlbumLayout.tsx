@@ -1,10 +1,12 @@
-import type { DragEvent, MouseEvent, ReactNode } from 'react';
+import { useRef, type DragEvent, type MouseEvent, type ReactNode } from 'react';
+import { useDialogFocus } from './useDialogFocus';
 
-/** Two-row album strip: at least 16 slots (2×8), always even, plus an empty add slot. */
+/**
+ * The strip shows the memories already on the tape plus one open slot to add
+ * another — structure appears as the tape fills, not as a grid of blanks.
+ */
 export function albumSlotCount(filled: number, max: number): number {
-  if (filled >= max) return filled + (filled % 2);
-  const padded = Math.max(16, filled + 1);
-  return padded + (padded % 2);
+  return filled >= max ? filled : filled + 1;
 }
 
 type Props = {
@@ -15,10 +17,12 @@ type Props = {
   onDragOver: (event: DragEvent<HTMLDivElement>) => void;
   onDragLeave: () => void;
   onDrop: (event: DragEvent<HTMLDivElement>) => void;
+  heading: string;
   prompts: ReactNode;
   featured: ReactNode;
   info: ReactNode;
-  strip: ReactNode;
+  /** Omitted until there is something to show in it. */
+  strip?: ReactNode;
   confirm?: ReactNode;
 };
 
@@ -30,12 +34,16 @@ export function AlbumLayout({
   onDragOver,
   onDragLeave,
   onDrop,
+  heading,
   prompts,
   featured,
   info,
   strip,
   confirm,
 }: Props) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(true, dialogRef);
+
   return (
     <div
       className={`create-overlay album-overlay ${closing ? 'is-closing' : ''} ${dropActive ? 'is-drop' : ''}`}
@@ -43,6 +51,7 @@ export function AlbumLayout({
       onMouseDown={onBackdropMouseDown}
     >
       <div
+        ref={dialogRef}
         className="album"
         role="dialog"
         aria-modal="true"
@@ -58,7 +67,7 @@ export function AlbumLayout({
       >
         <header className="album-chrome">
           <h2 className="album-title" id={titleId}>
-            Album
+            {heading}
           </h2>
           <div className="album-prompts">{prompts}</div>
         </header>
@@ -74,7 +83,7 @@ export function AlbumLayout({
                 </div>
                 <div className="album-info">{info}</div>
               </div>
-              <div className="album-strip">{strip}</div>
+              {strip && <div className="album-strip">{strip}</div>}
             </>
           )}
         </div>

@@ -4,7 +4,11 @@ import { useLayoutEffect, useRef } from 'react';
 import { PerspectiveCamera, Vector3 } from 'three';
 import { fitPoseToAspect, getCatalogCam, type CameraPose } from '../experience/layout';
 import { sceneApi } from '../experience/sceneApi';
-import { cameraFollow, cameraRig } from '../experience/visuals';
+import { getPlaybackCam } from '../experience/playbackFrame';
+import { cameraFit, cameraFollow, cameraRig } from '../experience/visuals';
+import { prefersReducedMotion } from '../lib/motion';
+import type { ExperienceMode } from '../types/collection';
+import gsap from 'gsap';
 import { getState, useExperience } from '../state/store';
 
 const FOLLOW = {
@@ -16,6 +20,28 @@ const FOLLOW = {
 };
 
 const _followPos = new Vector3();
+const _blend: CameraPose = { px: 0, py: 0, pz: 0, tx: 0, ty: 0, tz: 0, fov: 40, minDolly: 0 };
+const _goal: CameraPose = { ..._blend };
+
+/** Mix the raw rig with its viewport-fitted version. `fit` 1 = fully fitted. */
+function blendFit(raw: CameraPose, fitted: CameraPose, fit: number): CameraPose {
+  if (fit >= 1) return fitted;
+  const t = Math.max(0, fit);
+  _blend.px = raw.px + (fitted.px - raw.px) * t;
+  _blend.py = raw.py + (fitted.py - raw.py) * t;
+  _blend.pz = raw.pz + (fitted.pz - raw.pz) * t;
+  _blend.tx = raw.tx + (fitted.tx - raw.tx) * t;
+  _blend.ty = raw.ty + (fitted.ty - raw.ty) * t;
+  _blend.tz = raw.tz + (fitted.tz - raw.tz) * t;
+  _blend.fov = raw.fov + (fitted.fov - raw.fov) * t;
+  return _blend;
+}
+
+function isPlaybackFramed(mode: ExperienceMode): boolean {
+  return (
+    mode === 'PLAYING' || mode === 'PAUSED' || mode === 'CHANGING_SLIDE' || mode === 'REWINDING'
+  );
+}
 
 /** Pulled-back three-quarter so the full room fits in frame. */
 const ORBIT_OVERVIEW: CameraPose = {
@@ -34,8 +60,8 @@ export function CameraController() {
   const lastFov = useRef(cameraRig.fov);
   const orbitInspect = useExperience((s) => s.orbitInspect);
 
-  function applyPose(pose: CameraPose, aspect: number) {
-    const fitted = fitPoseToAspect(pose, aspect);
+  function applyPose(pose: CameraPose, aspect: number, fit = 1) {
+    const fitted = blendFit(pose, fitPoseToAspect(pose, aspect), fit);
     camera.position.set(fitted.px, fitted.py, fitted.pz);
     camera.lookAt(fitted.tx, fitted.ty, fitted.tz);
     if (camera instanceof PerspectiveCamera && Math.abs(fitted.fov - lastFov.current) > 0.01) {
@@ -56,7 +82,7 @@ export function CameraController() {
     applyPose(ORBIT_OVERVIEW, size.width / size.height);
   }, [orbitInspect, camera]);
 
-  useFrame((state) => {
+  useFrame((state, delta) => {
     if (getState().orbitInspect) return;
 
     if (cameraFollow.active && cameraFollow.id) {
@@ -72,7 +98,26 @@ export function CameraController() {
       }
     }
 
-    applyPose(cameraRig, state.size.width / state.size.height);
+    // Playback keeps the memory framed as the window resizes or the next
+    // memory has a different shape. Flights own the rig while they run.
+    if (
+      isPlaybackFramed(getState().mode) &&
+      !cameraFollow.active &&
+      !gsap.isTweening(cameraRig) &&
+      !gsap.isTweening(cameraFit)
+    ) {
+      const goal = getPlaybackCam(state.size.width, state.size.height, _goal);
+      const k = prefersReducedMotion() ? 1 : 1 - Math.exp(-delta * 4);
+      cameraRig.px += (goal.px - cameraRig.px) * k;
+      cameraRig.py += (goal.py - cameraRig.py) * k;
+      cameraRig.pz += (goal.pz - cameraRig.pz) * k;
+      cameraRig.tx += (goal.tx - cameraRig.tx) * k;
+      cameraRig.ty += (goal.ty - cameraRig.ty) * k;
+      cameraRig.tz += (goal.tz - cameraRig.tz) * k;
+      cameraRig.fov += (goal.fov - cameraRig.fov) * k;
+    }
+
+    applyPose(cameraRig, state.size.width / state.size.height, cameraFit.amount);
   }, -2);
 
   if (!orbitInspect) return null;

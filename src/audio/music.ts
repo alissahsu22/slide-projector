@@ -1,4 +1,7 @@
-const MUSIC_SRC = '/sounds/warm-nights.m4a';
+import { SOUND_ENABLED } from './enabled';
+import { publicUrl } from '../lib/publicUrl';
+
+const MUSIC_SRC = publicUrl('sounds/warm-nights.m4a');
 const MUTED_KEY = 'projector.music.muted';
 const TARGET_VOLUME = 0.28;
 const FADE_MS = 2200;
@@ -50,7 +53,7 @@ function fadeTo(target: number): void {
 
 /** Call from a user gesture — autoplay policies block a cold start otherwise. */
 export function startMusic(): void {
-  if (muted) return;
+  if (!SOUND_ENABLED || muted) return;
   const audio = getEl();
   void audio.play().then(() => fadeTo(TARGET_VOLUME)).catch(() => undefined);
 }
@@ -60,6 +63,7 @@ export function isMusicMuted(): boolean {
 }
 
 export function toggleMusic(): void {
+  if (!SOUND_ENABLED) return;
   muted = !muted;
   writeMuted(muted);
   if (muted) fadeTo(0);

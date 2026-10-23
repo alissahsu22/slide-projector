@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type ChangeEvent,
+  type CSSProperties,
   type DragEvent,
 } from 'react';
 import { requestEject } from '../experience/controller';
@@ -245,12 +246,12 @@ export function EditMagazineModal() {
       const used = photosRef.current.length;
       const room = MAX_PHOTOS - used;
       if (room <= 0) {
-        pushErrors([`A magazine can hold up to ${MAX_PHOTOS} photographs.`]);
+        pushErrors([`A tape can hold up to ${MAX_PHOTOS} memories.`]);
         return;
       }
       const overflow = incoming.length > room;
       const accepted = incoming.slice(0, room);
-      if (overflow) pushErrors([`A magazine can hold up to ${MAX_PHOTOS} photographs.`]);
+      if (overflow) pushErrors([`A tape can hold up to ${MAX_PHOTOS} memories.`]);
 
       const drafts: EditDraftPhoto[] = accepted.map((file) => ({
         key: crypto.randomUUID(),
@@ -362,7 +363,7 @@ export function EditMagazineModal() {
   async function onSave() {
     const name = title.trim();
     if (!name) {
-      setFieldError('Please name this magazine.');
+      setFieldError('Please name this tape.');
       titleRef.current?.focus();
       return;
     }
@@ -373,7 +374,7 @@ export function EditMagazineModal() {
     );
     const totalValid = allReady.length + readyPhotos.length;
     if (totalValid === 0) {
-      setFieldError('Add at least one photograph.');
+      setFieldError('Add at least one memory.');
       return;
     }
     setFieldError(null);
@@ -423,7 +424,7 @@ export function EditMagazineModal() {
       }, 180);
     } catch {
       setSaving(false);
-      setFieldError("Couldn't save changes. Try again.");
+      setFieldError("Couldn't save your changes. Try again.");
     }
   }
 
@@ -444,7 +445,7 @@ export function EditMagazineModal() {
       window.setTimeout(() => finishDeleting(id), 900);
     } catch {
       setDeleting(false);
-      setFieldError("Couldn't delete the magazine. Try again.");
+      setFieldError("Couldn't delete this tape. Try again.");
     }
   }
 
@@ -462,6 +463,7 @@ export function EditMagazineModal() {
   return (
     <AlbumLayout
       closing={closing}
+      heading="Edit tape"
       titleId={titleId}
       dropActive={dropActive}
       onBackdropMouseDown={(event) => {
@@ -481,16 +483,15 @@ export function EditMagazineModal() {
               onClick={() => setDeleteConfirm(false)}
               disabled={deleting}
             >
-              <span className="album-key">B</span>
+              <span className="album-key is-wide">Esc</span>
               Back
             </button>
             <button
               type="button"
-              className="album-prompt is-danger"
+              className="album-prompt is-danger is-primary"
               onClick={() => void onDelete()}
               disabled={deleting}
             >
-              <span className="album-key">A</span>
               {deleting ? 'Deleting…' : 'Delete'}
             </button>
           </>
@@ -503,7 +504,6 @@ export function EditMagazineModal() {
                 onClick={() => setDeleteConfirm(true)}
                 disabled={saving || deleting || !loaded}
               >
-                <span className="album-key">Y</span>
                 Delete
               </button>
             )}
@@ -513,7 +513,7 @@ export function EditMagazineModal() {
               onClick={close}
               disabled={saving || deleting}
             >
-              <span className="album-key">B</span>
+              <span className="album-key is-wide">Esc</span>
               Back
             </button>
             <button
@@ -522,7 +522,6 @@ export function EditMagazineModal() {
               onClick={() => void onSave()}
               disabled={saving || processing || deleting || !loaded}
             >
-              <span className="album-key">A</span>
               {saving ? 'Saving…' : processing ? 'Preparing…' : 'Save'}
             </button>
           </>
@@ -531,9 +530,10 @@ export function EditMagazineModal() {
       confirm={
         deleteConfirm ? (
           <>
-            <h3 className="album-info-title">Remove</h3>
+            <h3 className="album-info-title">Delete this tape?</h3>
             <p className="album-confirm-lead">
-              Remove “{collection?.title}” and every photograph in it? This cannot be undone.
+              “{collection?.title}” and every memory on it will be deleted. This can’t be
+              undone.
             </p>
           </>
         ) : undefined
@@ -541,11 +541,11 @@ export function EditMagazineModal() {
       featured={
         selected?.thumbUrl ? (
           <>
-            <img src={selected.thumbUrl} alt={selected.fileName ?? 'Photograph'} />
+            <img src={selected.thumbUrl} alt={selected.fileName ?? 'Memory'} />
             <button
               type="button"
               className="album-photo-remove"
-              aria-label={`Remove photo`}
+              aria-label="Remove memory"
               onClick={() => removePhoto(selected.key)}
             >
               ×
@@ -558,13 +558,22 @@ export function EditMagazineModal() {
             onClick={openPicker}
             disabled={!canAdd}
           >
-            {!loaded ? 'Loading…' : canAdd ? 'Add photographs' : 'Album is full'}
+            {!loaded ? (
+              'Loading…'
+            ) : canAdd ? (
+              <>
+                <span className="album-photo-empty-title">+ Add memories</span>
+                <span className="album-photo-empty-sub">Choose photos, or drop them here</span>
+              </>
+            ) : (
+              'This tape is full'
+            )}
           </button>
         )
       }
       info={
         <>
-          <h3 className="album-info-title">Info</h3>
+          <h3 className="album-info-title">Details</h3>
           <label className="album-row">
             <span>Name</span>
             <input
@@ -572,7 +581,7 @@ export function EditMagazineModal() {
               type="text"
               value={title}
               maxLength={48}
-              placeholder="Untitled"
+              placeholder="Name this tape"
               autoComplete="off"
               disabled={!loaded}
               onChange={(event) => {
@@ -611,7 +620,7 @@ export function EditMagazineModal() {
             </div>
           </div>
           <div className="album-row">
-            <span>Photographs</span>
+            <span>Memories</span>
             <em>
               {photos.length} / {MAX_PHOTOS}
               {readyPhotos.length > 0 ? ` · ${readyPhotos.length} new` : ''}
@@ -644,7 +653,12 @@ export function EditMagazineModal() {
           />
           <ul
             className="album-thumbs"
-            style={{ gridTemplateColumns: `repeat(${columns}, minmax(4.05rem, 1fr))` }}
+            style={
+                {
+                  gridTemplateColumns: `repeat(${columns}, minmax(4.05rem, 1fr))`,
+                  '--rows': slotCount > columns ? 2 : 1,
+                } as CSSProperties
+              }
           >
             {Array.from({ length: slotCount }, (_, index) => {
               const photo = photos[index];
@@ -655,9 +669,9 @@ export function EditMagazineModal() {
                       type="button"
                       disabled={!canAdd}
                       onClick={openPicker}
-                      aria-label={`Add photograph ${index + 1}`}
+                      aria-label="Add more memories"
                     >
-                      {index + 1}
+                      +
                     </button>
                   </li>
                 );
@@ -679,12 +693,12 @@ export function EditMagazineModal() {
                   {photo.thumbUrl ? (
                     <img
                       src={photo.thumbUrl}
-                      alt={photo.fileName ?? `Photo ${index + 1}`}
+                      alt={photo.fileName ?? `Memory ${index + 1}`}
                       draggable={false}
                     />
                   ) : (
                     <span className="album-thumb-ph">
-                      {photo.status === 'error' ? '!' : '…'}
+                      {photo.status === 'error' ? 'Error' : '…'}
                     </span>
                   )}
                 </li>

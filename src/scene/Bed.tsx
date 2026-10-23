@@ -3,8 +3,9 @@ import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { WALL_Z } from '../experience/layout';
 import { ROOM_HALF_W } from './roomDims';
+import { publicUrl } from '../lib/publicUrl';
 
-const BED_URL = '/models/bed.glb';
+const BED_URL = publicUrl('models/bed.glb');
 /** Long side of the bed in world metres; the model is fitted to this. */
 const BED_LENGTH = 2.55;
 /** Gap kept between the bed and the walls it backs onto. */

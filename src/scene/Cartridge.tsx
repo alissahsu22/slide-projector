@@ -5,6 +5,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import {
   isInteractionLocked,
+  requestInsert,
   setHovered,
 } from '../experience/controller';
 import { isCurationBusy } from '../experience/curation';
@@ -24,6 +25,8 @@ import { clearArriving, finishDeleting, getState, setCrateSelected, useExperienc
 import type { Collection } from '../types/collection';
 import { isTransitional } from '../types/collection';
 import { MAGAZINE, magazineHeight, magazineLength, magazineWidth } from './magazineLayout';
+import { useGuideTargetId } from '../state/guide';
+import { GuideGlow } from './GuideGlow';
 import { MagazineActions } from './MagazineActions';
 import { SlideMagazine } from './SlideMagazine';
 
@@ -42,6 +45,16 @@ const _euler = new THREE.Euler();
 const _quat = new THREE.Quaternion();
 const _world = new THREE.Vector3();
 
+/** PLAY / EDIT sit on the tape, so a double-click there belongs to the button. */
+function hitActionButton(object: THREE.Object3D): boolean {
+  let node: THREE.Object3D | null = object;
+  while (node) {
+    if (node.userData.action === 'PLAY' || node.userData.action === 'EDIT') return true;
+    node = node.parent;
+  }
+  return false;
+}
+
 export function Cartridge({ collection }: Props) {
   const group = useRef<THREE.Group>(null);
   const [localHover, setLocalHover] = useState(false);
@@ -53,6 +66,7 @@ export function Cartridge({ collection }: Props) {
   const arrivingId = useExperience((s) => s.arrivingId);
   const deletingId = useExperience((s) => s.deletingId);
   const inCollection = useExperience((s) => s.collectionIds.includes(collection.id));
+  const guideTargetId = useGuideTargetId();
   const isDeleting = deletingId === collection.id;
   const slidesRef = useRef<(THREE.Group | null)[]>([]);
   const startHome = useMemo<MagazinePose>(() => {
@@ -104,6 +118,11 @@ export function Cartridge({ collection }: Props) {
   useLayoutEffect(() => {
     const g = group.current;
     if (!g) return;
+    g.userData.guideSize = {
+      w: magazineLength(),
+      h: magazineHeight(),
+      d: magazineWidth(),
+    };
     registerCartridge(collection.id, g, startHome);
     const handle = sceneApi.cartridges.get(collection.id);
     const home = handle?.home ?? startHome;
@@ -272,7 +291,7 @@ export function Cartridge({ collection }: Props) {
     const g = group.current;
     if (!g) return;
     g.getWorldPosition(_world);
-    beginDrag(collection.id, _world, event.camera);
+    beginDrag(collection.id, _world, event.camera, event.nativeEvent.clientX, event.nativeEvent.clientY);
   }
 
   const trayW = magazineLength();
@@ -301,13 +320,29 @@ export function Cartridge({ collection }: Props) {
         e.stopPropagation();
         if (isDeleting || isInteractionLocked()) return;
         if (getState().insertedId === collection.id) return;
+        // A second click in a double-click loads the tape. One click only
+        // selects it, so PLAY and EDIT stay available.
+        if (e.detail > 1) {
+          void requestInsert(collection.id);
+          return;
+        }
         setCrateSelected(collection.id);
+      }}
+      onDoubleClick={(e) => {
+        if (!playable || hitActionButton(e.object)) return;
+        e.stopPropagation();
+        if (isDeleting || isInteractionLocked()) return;
+        if (getState().insertedId === collection.id) return;
+        void requestInsert(collection.id);
       }}
     >
       <mesh position={[0, trayH / 2, 0]}>
         <boxGeometry args={[trayW, trayH, trayD]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
+      {guideTargetId === collection.id && (
+        <GuideGlow width={trayW} height={trayH} depth={trayD} />
+      )}
       <SlideMagazine
         title={collection.title}
         date={collection.date}
@@ -331,7 +366,7 @@ export function Cartridge({ collection }: Props) {
         trayW={trayW}
         trayH={trayH}
         selected={
-          crateSelectedId === collection.id && !isDeleting && !arriving
+          crateSelectedId === collection.id && !isDeleting && !arriving && !curating
         }
       />
     </group>

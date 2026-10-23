@@ -1,3 +1,7 @@
+import { SOUND_ENABLED } from './enabled';
+import { isMusicMuted } from './music';
+import { publicUrl } from '../lib/publicUrl';
+
 export type SoundName =
   | 'pickup'
   | 'insert'
@@ -12,13 +16,13 @@ export type SoundName =
  * synthesized mechanical sounds. Several names may share one file.
  */
 export const SOUND_FILES: Record<SoundName, string> = {
-  pickup: '/sounds/pickup.wav',
-  insert: '/sounds/insert.wav',
-  advance: '/sounds/slide-click.wav',
-  reverse: '/sounds/slide-click.wav',
-  rewind: '/sounds/rewind.wav',
-  eject: '/sounds/eject.wav',
-  switch: '/sounds/switch.mp3',
+  pickup: publicUrl('sounds/pickup.wav'),
+  insert: publicUrl('sounds/insert.wav'),
+  advance: publicUrl('sounds/slide-click.m4a'),
+  reverse: publicUrl('sounds/slide-click.m4a'),
+  rewind: publicUrl('sounds/rewind.wav'),
+  eject: publicUrl('sounds/eject.wav'),
+  switch: publicUrl('sounds/switch.mp3'),
 };
 
 /** Trims recorded samples down to the level of the synthesized fallbacks. */
@@ -34,6 +38,12 @@ const SOUND_RATE: Partial<Record<SoundName, number>> = {
 };
 
 let ctx: AudioContext | null = null;
+let effectsMuted = isMusicMuted();
+
+export function setEffectsMuted(muted: boolean): void {
+  effectsMuted = muted;
+  if (muted) stopClicks();
+}
 const buffers = new Map<SoundName, AudioBuffer>();
 let unlocked = false;
 
@@ -62,6 +72,7 @@ function getCtx(): AudioContext {
 }
 
 export function unlockAudio(): void {
+  if (!SOUND_ENABLED) return;
   const audio = getCtx();
   if (audio.state === 'suspended') void audio.resume();
   unlocked = true;
@@ -148,6 +159,7 @@ function trackClick(src: AudioBufferSourceNode): void {
 
 /** Several overlapping mechanical clacks compressed into a rewind burst. */
 export function playRewindClacks(count: number, spanMs: number): void {
+  if (!SOUND_ENABLED) return;
   stopClicks();
   const n = Math.max(2, Math.round(count));
   const span = Math.max(120, spanMs);
@@ -230,6 +242,7 @@ export function playSound(
   name: SoundName,
   opts?: { interrupt?: boolean },
 ): void {
+  if (!SOUND_ENABLED || effectsMuted) return;
   const audio = getCtx();
   if (audio.state === 'suspended') void audio.resume();
   if (opts?.interrupt || CLICK_SOUNDS.has(name)) stopClicks();
@@ -243,6 +256,7 @@ export function playSound(
 }
 
 export async function preloadSoundFiles(): Promise<void> {
+  if (!SOUND_ENABLED) return;
   const audio = getCtx();
   const byUrl = new Map<string, SoundName[]>();
   for (const name of Object.keys(SOUND_FILES) as SoundName[]) {

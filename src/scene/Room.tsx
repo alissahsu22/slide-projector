@@ -23,6 +23,7 @@ import {
 import { Table } from './Table';
 import { WindowCurtains } from './WindowCurtains';
 import { WINDOW_H, WINDOW_W } from './windowDims';
+import { publicUrl } from '../lib/publicUrl';
 
 const WALLPAPER_TILE = 1.5;
 
@@ -49,7 +50,7 @@ function makeWallpaperFamily(): {
   const front = tiledClone(back, ROOM_W, ROOM_H, WALLPAPER_TILE);
   const side = tiledClone(back, ROOM_D, ROOM_H, WALLPAPER_TILE);
   back.repeat.set(ROOM_W / WALLPAPER_TILE, ROOM_H / WALLPAPER_TILE);
-  new THREE.TextureLoader().load('/wallpaper.png', (loaded) => {
+  new THREE.TextureLoader().load(publicUrl('wallpaper.png'), (loaded) => {
     const image = loaded.image;
     back.image = image;
     front.image = image;
@@ -65,7 +66,7 @@ function makeWallpaperFamily(): {
 const CEILING_TILE = 4.4;
 
 function makeCeilingPaper(width: number, depth: number): THREE.Texture {
-  const tex = new THREE.TextureLoader().load('/ceiling.jpg', (loaded) => {
+  const tex = new THREE.TextureLoader().load(publicUrl('ceiling.jpg'), (loaded) => {
     const image = loaded.image as { width: number; height: number } | undefined;
     const aspect = image?.width && image?.height ? image.width / image.height : 1;
     loaded.repeat.set(width / CEILING_TILE, depth / (CEILING_TILE / aspect));
@@ -269,7 +270,7 @@ function WithWall({
 
 function WindowPane() {
   const view = useMemo(() => {
-    const tex = new THREE.TextureLoader().load('/window.jpg', (loaded) =>
+    const tex = new THREE.TextureLoader().load(publicUrl('window.jpg'), (loaded) =>
       coverFit(loaded, WINDOW_W / WINDOW_H),
     );
     tex.colorSpace = THREE.SRGBColorSpace;

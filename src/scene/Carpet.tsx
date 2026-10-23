@@ -2,8 +2,9 @@ import { useGLTF } from '@react-three/drei';
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { ROOM_D, ROOM_HALF_W, ROOM_MID_Z, ROOM_W } from './roomDims';
+import { publicUrl } from '../lib/publicUrl';
 
-const CARPET_URL = '/models/carpet.glb';
+const CARPET_URL = publicUrl('models/carpet.glb');
 /** Olive moss sampled from the reference — lifted a little so the grey pile doesn't crush. */
 const CARPET_GREEN = new THREE.Color('#5c6828');
 

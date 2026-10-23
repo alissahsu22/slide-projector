@@ -1,13 +1,15 @@
 import { useSyncExternalStore } from 'react';
-import { MOCK_COLLECTIONS } from '../data/collections';
+import { BUILTIN_COLLECTIONS } from '../data/collections';
 import { viewportCapacity } from '../experience/capacity';
 import { persistUserSlide } from '../storage/collectionService';
 import type { Collection, ExperienceMode } from '../types/collection';
 import {
   loadCuration,
+  loadEntered,
   loadProgress,
   loadViewerName,
   saveCuration,
+  saveEntered,
   saveProgress,
   saveViewerName,
   VIEWER_NAME_MAX,
@@ -30,6 +32,8 @@ export type ExperienceState = {
   slideIndex: number;
   isPlaying: boolean;
   photoReady: boolean;
+  /** The current memory's file failed, so the wall is showing a stand-in. */
+  photoError: boolean;
   progress: Record<string, number>;
   createOpen: boolean;
   arrivingId: string | null;
@@ -40,8 +44,10 @@ export type ExperienceState = {
   orbitInspect: boolean;
   /** True while the crate flies to or from the shelf. */
   curationBusy: boolean;
-  /** First name the visitor gave on arrival. Null keeps the intro gate up. */
+  /** Optional name engraved on the crate. Not required to enter the room. */
   viewerName: string | null;
+  /** False until the visitor leaves the introduction. */
+  entered: boolean;
 };
 
 const progress = loadProgress();
@@ -68,7 +74,7 @@ function assignShelfSlots(
 
 const seedCapacity = viewportCapacity();
 const stored = loadCuration();
-const seedCollections = MOCK_COLLECTIONS.map((c) => ({
+const seedCollections = BUILTIN_COLLECTIONS.map((c) => ({
   ...c,
   currentSlide: progress[c.id] ?? 0,
 }));
@@ -77,10 +83,21 @@ const seedCollections = MOCK_COLLECTIONS.map((c) => ({
  * Membership the user saved, including magazines still coming out of IndexedDB.
  * `collectionIds` in state only ever holds ids that resolve to a collection, so
  * the crate never shows a hole for a magazine that has not loaded yet.
+ *
+ * If localStorage still names deleted mock tapes, start with the built-in
+ * magazines so the crate is not empty on a library refresh.
  */
-let desiredIds: string[] =
-  stored?.collectionIds ??
-  seedCollections.slice(0, seedCapacity).map((c) => c.id);
+function initialDesiredIds(): string[] {
+  const seedIds = seedCollections.slice(0, seedCapacity).map((c) => c.id);
+  const seedSet = new Set(seedCollections.map((c) => c.id));
+  if (!stored) return seedIds;
+  const hasBuiltin = stored.collectionIds.some((id) => seedSet.has(id));
+  if (hasBuiltin) return stored.collectionIds;
+  const userIds = stored.collectionIds.filter((id) => !seedSet.has(id));
+  return [...seedIds, ...userIds];
+}
+
+let desiredIds: string[] = initialDesiredIds();
 
 let state: ExperienceState = {
   mode: 'CATALOG',
@@ -95,6 +112,7 @@ let state: ExperienceState = {
   slideIndex: 0,
   isPlaying: false,
   photoReady: false,
+  photoError: false,
   progress,
   createOpen: false,
   arrivingId: null,
@@ -104,6 +122,7 @@ let state: ExperienceState = {
   orbitInspect: false,
   curationBusy: false,
   viewerName: loadViewerName(),
+  entered: loadEntered(),
 };
 
 const listeners = new Set<() => void>();
@@ -271,6 +290,12 @@ export function setCreateOpen(open: boolean): void {
   setState({ createOpen: open });
 }
 
+export function setEntered(): void {
+  if (state.entered) return;
+  setState({ entered: true });
+  saveEntered();
+}
+
 export function setViewerName(name: string): void {
   const trimmed = name.trim().replace(/\s+/g, ' ').slice(0, VIEWER_NAME_MAX);
   if (!trimmed) return;
@@ -332,6 +357,7 @@ export function finishDeleting(id: string): void {
     crateSelectedId: s.crateSelectedId === id ? null : s.crateSelectedId,
     slideIndex: s.insertedId === id ? 0 : s.slideIndex,
     photoReady: s.insertedId === id ? false : s.photoReady,
+    photoError: s.insertedId === id ? false : s.photoError,
   }));
   const shelfSlots = { ...state.shelfSlots };
   delete shelfSlots[id];

@@ -1,5 +1,5 @@
 import { useFrame } from '@react-three/fiber';
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import {
   CRATE,
@@ -68,7 +68,7 @@ const STAMP_W = 512;
 const STAMP_H = 160;
 const STAMP_INK = 384;
 
-function makeStamp(viewerName: string | null): THREE.CanvasTexture {
+function makeStamp(viewerName: string | null, fontsReady: boolean): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = STAMP_W;
   canvas.height = STAMP_H;
@@ -83,13 +83,17 @@ function makeStamp(viewerName: string | null): THREE.CanvasTexture {
     ctx.fillStyle = '#16120e';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.letterSpacing = '0.28em';
-    const text = viewerName ? `FOR ${viewerName.toUpperCase()}` : 'SLIDES';
+    ctx.letterSpacing = '0.16em';
+    const text = viewerName ? `FOR ${viewerName.toUpperCase()}` : 'MEMORIES';
     // Long names would run off the brass plate, so pull the size back until
     // the whole line fits inside the engraved area.
+    // Typed in the same face as the tape labels, so the plate reads as part of the set.
+    const typeface = fontsReady
+      ? '"Special Elite", "Courier New", monospace'
+      : '"Courier New", monospace';
     let size = 72;
     do {
-      ctx.font = `700 ${size}px "Barlow Condensed", "Helvetica Neue", sans-serif`;
+      ctx.font = `400 ${size}px ${typeface}`;
       if (ctx.measureText(text).width <= STAMP_INK) break;
       size -= 2;
     } while (size > 26);
@@ -126,7 +130,13 @@ export function CartridgeCrate() {
   const root = useRef<THREE.Group>(null);
 
   const wood = useMemo(() => getCrateWoodTexture(), []);
-  const stamp = useMemo(() => makeStamp(viewerName), [viewerName]);
+  const [fontsReady, setFontsReady] = useState(false);
+  useEffect(() => {
+    // Ask for the face by name: the plate can draw before any DOM text has
+    // pulled Special Elite in, and fonts.ready alone would resolve without it.
+    void document.fonts.load('72px "Special Elite"').then(() => setFontsReady(true));
+  }, []);
+  const stamp = useMemo(() => makeStamp(viewerName, fontsReady), [viewerName, fontsReady]);
   const inner = magazineCrateInner(count);
   const outer = magazineCrateOuter(count);
   const w = outer.w;

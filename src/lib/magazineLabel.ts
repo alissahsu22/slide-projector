@@ -207,7 +207,7 @@ export function drawMagazineLabel(
   ctx.lineTo(w - pad, ruleY);
   ctx.stroke();
 
-  const count = `${photoCount} ${photoCount === 1 ? 'PHOTO' : 'PHOTOS'}`;
+  const count = `${photoCount} ${photoCount === 1 ? 'MEMORY' : 'MEMORIES'}`;
   ctx.font = `${LABEL_WEIGHT} ${countSize}px ${typeface}`;
   const countW = ctx.measureText(count).width;
 

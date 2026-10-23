@@ -7,6 +7,8 @@ export type PhotoCrop = {
 export type Photo = {
   id: string;
   src: string;
+  /** Smaller decode for magazine film windows. Falls back to `src`. */
+  thumbSrc?: string;
   order: number;
   width?: number;
   height?: number;

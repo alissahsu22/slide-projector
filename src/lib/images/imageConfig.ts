@@ -1,8 +1,8 @@
 export const IMAGE_CONFIG = {
   maxLongEdge: 1920,
-  quality: 0.82,
+  quality: 0.72,
   thumbnailLongEdge: 320,
-  thumbnailQuality: 0.72,
+  thumbnailQuality: 0.7,
   maxPhotos: 50,
   concurrency: 3,
 } as const;

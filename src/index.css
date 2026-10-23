@@ -1,21 +1,68 @@
 :root {
   color-scheme: dark;
-  --paper: #d8d0c4;
   --ink: #0a0806;
   --brass: #8a6e48;
+  --focus: #f3e2a8;
   --shadow: rgba(0, 0, 0, 0.7);
-  --pixel: "Pixelify Sans", ui-monospace, monospace;
+  --panel: rgba(8, 6, 5, 0.88);
+  --line: rgba(255, 255, 255, 0.28);
+  /* Four voices: the machine (HUD keys), the labels printed on the tapes,
+     the narrator, and the hand that signs off. */
+  --font-machine: "Pixelify Sans", ui-monospace, monospace;
+  --font-label: "Special Elite", "Courier New", monospace;
+  --font-voice: Fraunces, "Times New Roman", serif;
+  --font-hand: Caveat, cursive;
+  --readable: var(--font-voice);
+  --pixel: var(--font-machine);
+  /* Pixelify draws on an 11-pixel em, so these sizes put every font pixel on
+     whole device pixels (11/22/33 at 1x, 16.5 at 2x). */
+  --machine-sm: 11px;
+  --machine-md: 16.5px;
+  --machine-lg: 22px;
+  --machine-xl: 33px;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.15rem;
+  --text-xl: 1.35rem;
+  /* Warm paper whites so type sits in the lamplight rather than on top of it. */
+  --paper: #f4efe6;
+  /* Lamp golds, dimmest to brightest: brass key, its hover, the lit key, its hover. */
+  --gold: #e8c56b;
+  --gold-warm: #c9a05a;
+  --gold-pale: #ffe7a8;
+  --gold-bright: #fff6d4;
+  /* The red family only ever means delete or error. */
+  --rose: #e2a09a;
+  --danger: #c9665c;
+  --danger-hover: #e2847a;
+  --danger-deep: #8a2a28;
+  /* Tracking: body-ish labels, HUD keys, small caps captions. */
+  --track-tight: 0.04em;
+  --track-machine: 0.06em;
+  --track-wide: 0.1em;
+  --paper-soft: rgba(244, 239, 230, 0.74);
+  --paper-faint: rgba(244, 239, 230, 0.5);
   --hud-btn-fill: #fff;
   --hud-btn-ink: #0a0806;
   --hud-btn-hover: #a87b3c;
   --hud-btn-border: 3px solid #0a0806;
   --hud-glow:
-    0 0 8px rgba(255, 255, 255, 0.18),
+    0 0 8px rgba(255, 220, 160, 0.2),
     0 2px 16px rgba(0, 0, 0, 0.85);
 }
 
 * {
   box-sizing: border-box;
+}
+
+:focus-visible {
+  outline: 2px solid var(--paper);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px rgba(0, 0, 0, 0.75);
+}
+
+canvas:focus {
+  outline: none;
 }
 
 html,
@@ -30,7 +77,9 @@ body,
 }
 
 body {
-  font-family: Fraunces, "Times New Roman", serif;
+  font-family: var(--font-voice);
+  font-weight: 400;
+  font-variation-settings: "SOFT" 100;
   color: var(--paper);
 }
 
@@ -57,7 +106,7 @@ canvas {
   text-align: center;
   font-family: var(--pixel);
   font-weight: 400;
-  color: #fff;
+  color: var(--paper);
   text-shadow: var(--hud-glow);
 }
 
@@ -69,35 +118,48 @@ canvas {
 
 .hint,
 .status {
-  max-width: min(48rem, calc(100% - 2.4rem));
-  letter-spacing: 0.06em;
-  line-height: 1.55;
+  max-width: min(36rem, calc(100% - 2.4rem));
+  letter-spacing: var(--track-machine);
+  line-height: 1.45;
   text-transform: uppercase;
-  font-size: 1.25rem;
+  font-size: var(--machine-md);
   opacity: 0.92;
 }
 
-.magazine-readout {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.28rem;
-  padding: 0;
-}
-
-.magazine-readout-title {
-  font-size: 1.25rem;
-  letter-spacing: 0.06em;
+.hint-readable {
+  font-family: var(--readable);
+  font-size: var(--text-lg);
+  letter-spacing: 0;
   line-height: 1.45;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
-.magazine-readout-meta {
-  font-size: 0.95rem;
-  letter-spacing: 0.08em;
-  line-height: 1.5;
-  text-transform: uppercase;
-  opacity: 0.72;
+.magazine-readout {
+  max-width: min(34rem, calc(100% - 2.4rem));
+}
+
+/* The tape's own name, set in the face printed on its label. */
+.readout-title {
+  font-family: var(--font-label);
+  letter-spacing: var(--track-tight);
+  color: var(--gold);
+}
+
+/* Notes laid over the room sit on the same dark panel as the HUD, so they
+   stay legible over the pale desk and wallpaper. */
+.hud-note {
+  /* Centred with left: 50%, a note would otherwise shrink to half the screen. */
+  width: max-content;
+  max-width: min(36rem, calc(100vw - 2rem));
+  padding: 0.5rem 0.95rem 0.55rem;
+  background: var(--panel);
+  border: 3px solid #000;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    var(--hud-glow);
+  text-shadow: none;
+  text-wrap: balance;
+  opacity: 1;
 }
 
 .curation {
@@ -114,129 +176,165 @@ canvas {
   gap: 0.35rem;
   font-family: var(--pixel);
   font-weight: 700;
-  font-size: 0.85rem;
-  letter-spacing: 0.06em;
+  font-size: var(--machine-md);
+  letter-spacing: var(--track-machine);
   line-height: 1.4;
   text-transform: uppercase;
-  color: #fff;
+  color: var(--paper);
   text-shadow: var(--hud-glow);
+}
+
+.curation-kept {
+  font-family: var(--font-voice);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
 }
 
 .curation-kept,
 .curation-cap {
   font-size: inherit;
   font-weight: inherit;
-  letter-spacing: inherit;
   opacity: 1;
 }
 
 .curation-hint {
   margin: 0;
-  max-width: min(48rem, calc(100% - 2.4rem));
-  font-size: 1.25rem;
-  letter-spacing: 0.06em;
-  line-height: 1.55;
-  text-transform: uppercase;
+  max-width: min(36rem, calc(100% - 2.4rem));
+  font-size: var(--text-lg);
+  letter-spacing: 0;
+  line-height: 1.45;
+  text-transform: none;
   opacity: 0.92;
 }
 
-/* Filled brass rather than the ghost styling of its neighbours in the bar —
-   it's the one way out of curating, so it should read as the primary action. */
-.curation-done {
-  appearance: none;
-  border: var(--hud-btn-border);
-  background: var(--hud-btn-hover);
-  color: var(--hud-btn-ink);
-  font-family: var(--pixel);
-  font-weight: 400;
-  font-size: 0.7rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  padding: 0.62rem 0.7rem;
-  cursor: pointer;
-  backdrop-filter: blur(10px);
-  transition:
-    background 0.18s ease,
-    color 0.18s ease;
-}
-
-.curation-done:hover {
-  background: #c9a05a;
-  color: var(--hud-btn-ink);
-}
-
+/* One toolbar panel, same chrome as the playback deck, so the HUD reads as a
+   single object instead of loose chips on the wallpaper. */
 .top-bar {
   position: absolute;
   top: 1.15rem;
   right: 1.15rem;
   z-index: 20;
   display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.5rem;
+  align-items: stretch;
   max-width: calc(100% - 2.3rem);
-  flex-wrap: wrap;
+  padding: 0.3rem;
+  background: var(--panel);
+  border: 3px solid #000;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    var(--hud-glow);
+  backdrop-filter: blur(10px);
 }
 
-.orbit-toggle,
-.music-toggle,
-.shelf-toggle {
+.top-bar-utility,
+.top-bar-actions {
+  display: flex;
+  align-items: stretch;
+  gap: 0.3rem;
+}
+
+.top-bar-actions {
+  margin-left: 0.45rem;
+  padding-left: 0.45rem;
+  border-left: 1px solid var(--line);
+}
+
+/* Secondary: dim text in the panel; lights up on hover. */
+.hud-link {
   appearance: none;
-  border: var(--hud-btn-border);
-  background: #000;
-  color: #fff;
+  border: 0;
+  background: transparent;
+  color: var(--paper-soft);
   font-family: var(--pixel);
   font-weight: 400;
-  font-size: 0.7rem;
-  letter-spacing: 0.06em;
+  font-size: var(--machine-md);
+  letter-spacing: var(--track-machine);
   text-transform: uppercase;
-  padding: 0.62rem 0.7rem;
+  min-height: 2.75rem;
+  padding: 0 0.7rem;
   cursor: pointer;
   transition:
     background 0.18s ease,
     color 0.18s ease;
 }
 
-.orbit-toggle,
-.shelf-toggle,
-.curation-done {
-  width: 10.75rem;
-  text-align: center;
-  white-space: nowrap;
+.hud-link:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--paper);
 }
 
-.orbit-toggle:hover,
-.music-toggle:hover,
-.shelf-toggle:not(:disabled):hover {
+/* Primary: the two ways to move through the room. */
+.hud-action {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-width: 7.5rem;
+  min-height: 2.75rem;
+  padding: 0 0.9rem;
+  border: 0;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--paper);
+  font-family: var(--pixel);
+  font-weight: 400;
+  font-size: var(--machine-md);
+  letter-spacing: var(--track-machine);
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+  transition:
+    background 0.18s ease,
+    color 0.18s ease;
+}
+
+.hud-action svg,
+.music-toggle svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex-shrink: 0;
+  shape-rendering: crispEdges;
+}
+
+.hud-action svg rect {
+  fill: currentColor;
+}
+
+.hud-action:not(:disabled):hover {
   background: var(--hud-btn-hover);
   color: var(--hud-btn-ink);
 }
 
+.hud-action:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Pale gold way out (Exit view, Done): the one lit key on the panel. */
+.orbit-toggle.is-on,
+.curation-done {
+  background: var(--gold-pale);
+  color: var(--hud-btn-ink);
+  box-shadow: 0 0 14px rgba(232, 197, 107, 0.6);
+}
+
 .orbit-toggle.is-on:hover,
-.music-toggle.is-on:hover {
+.curation-done:hover {
+  background: var(--gold-bright);
   color: var(--hud-btn-ink);
 }
 
-.orbit-toggle.is-on {
-  color: #fff;
-}
-
-.music-toggle.is-on {
-  color: var(--brass);
-}
-
 .music-toggle {
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  width: 2.5rem;
-  height: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
   padding: 0;
 }
 
-.music-toggle svg {
-  width: 1.05rem;
-  height: 1.05rem;
+.music-toggle.is-on {
+  color: var(--gold);
 }
 
 .music-toggle .speaker-body {
@@ -250,126 +348,141 @@ canvas {
   stroke-linecap: square;
 }
 
-.shelf-toggle:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-
 .playback {
   position: absolute;
   left: 50%;
-  bottom: 1.4rem;
+  bottom: 1rem;
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.85rem 2.1rem 0.95rem;
-  min-width: 22rem;
-  background: rgba(6, 5, 4, 0.78);
-  border: 1px solid rgba(220, 210, 196, 0.1);
+  gap: 0.7rem;
+  width: min(36rem, calc(100% - 1.5rem));
+  padding: 0.9rem 1rem 1rem;
+  background: var(--panel);
+  border: 3px solid #000;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    var(--hud-glow);
   backdrop-filter: blur(10px);
-  transition: min-width 0.28s ease, padding 0.28s ease;
 }
 
 .playback.is-busy {
-  opacity: 0.7;
+  opacity: 0.72;
 }
 
-.playback.is-collapsed {
-  min-width: 0;
-  padding: 0.5rem 2.1rem 0.55rem;
+.playback-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
 }
 
-.playback-toggle {
-  position: absolute;
-  top: 0.3rem;
-  right: 0.35rem;
-  padding: 0.15rem 0.35rem !important;
-  border-color: transparent !important;
-  background: none !important;
-  font-size: 0.55rem !important;
-  line-height: 1;
-  opacity: 0.55;
-}
-
-.playback-toggle:hover {
-  opacity: 1;
-}
-
-.playback-body {
+.playback-titles {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.45rem;
-  overflow: hidden;
-  max-height: 8rem;
-  opacity: 1;
-  transition: max-height 0.28s ease, opacity 0.2s ease;
-}
-
-.playback.is-collapsed .playback-body {
-  max-height: 0;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.playback-mini-counter {
-  font-family: var(--pixel);
-  font-weight: 400;
-  font-size: 0.7rem;
-  letter-spacing: 0.06em;
-  opacity: 0.75;
-}
-
-.playback-meta {
-  display: flex;
-  gap: 0.7rem;
-  align-items: baseline;
-  font-family: var(--pixel);
-  font-weight: 400;
-  font-size: 0.7rem;
-  letter-spacing: 0.06em;
-  opacity: 0.8;
+  gap: 0.2rem;
+  min-width: 0;
 }
 
 .playback-title {
-  font-family: Caveat, cursive;
-  font-size: 1.35rem;
-  letter-spacing: 0;
-  opacity: 1;
+  font-family: var(--font-label);
+  font-weight: 400;
+  font-size: var(--text-xl);
+  letter-spacing: var(--track-machine);
+  line-height: 1.2;
+  text-transform: uppercase;
+  color: var(--paper);
+  text-shadow: var(--hud-glow);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playback-date {
+  font-family: var(--font-label);
+  font-size: var(--text-sm);
+  letter-spacing: var(--track-wide);
+  text-transform: uppercase;
+  color: var(--gold-warm);
 }
 
 .playback-counter {
-  font-family: var(--pixel);
+  flex-shrink: 0;
+  /* Pixelify's 5 reads as an S, so numbers use the reading face. */
+  font-family: var(--font-voice);
+  font-weight: 600;
+  font-size: var(--text-md);
+  letter-spacing: 0;
+  color: var(--paper);
+  font-variant-numeric: tabular-nums;
+}
+
+.playback-counter-total {
+  color: var(--paper-faint);
   font-weight: 400;
-  font-size: 1rem;
-  letter-spacing: 0.06em;
 }
 
-.playback-wait {
-  font-style: normal;
-  opacity: 0.55;
-  font-size: 0.7rem;
+/* Where you are in the tape, so the counter has something to point at. */
+.playback-progress {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.12);
 }
 
+.playback-progress span {
+  display: block;
+  height: 100%;
+  background: var(--gold);
+  transition: width 0.3s ease;
+}
+
+.playback-note {
+  margin: 0;
+  font-family: var(--readable);
+  font-size: var(--text-md);
+  letter-spacing: 0;
+  line-height: 1.4;
+}
+
+.playback-note.is-error {
+  color: var(--rose);
+}
+
+/* Transport on the left, ways out on the right. */
 .playback-buttons {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.playback-transport,
+.playback-actions {
+  display: flex;
   gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.playback-actions {
+  margin-left: auto;
 }
 
 .playback button {
   appearance: none;
   border: var(--hud-btn-border);
   background: #000;
-  color: #fff;
+  color: var(--paper);
   font-family: var(--pixel);
   font-weight: 400;
-  font-size: 0.7rem;
-  letter-spacing: 0.06em;
+  font-size: var(--machine-md);
+  letter-spacing: var(--track-machine);
   text-transform: uppercase;
-  padding: 0.55rem 0.7rem;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.95rem;
   cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
   transition:
     background 0.18s ease,
     color 0.18s ease;
@@ -380,13 +493,56 @@ canvas {
   color: var(--hud-btn-ink);
 }
 
+.playback button.is-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  min-width: 2.75rem;
+  padding: 0;
+}
+
+.playback button.is-icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  display: block;
+  shape-rendering: crispEdges;
+}
+
+.playback button.is-icon svg rect {
+  fill: currentColor;
+}
+
 .playback button:disabled {
   opacity: 0.35;
   cursor: default;
 }
 
 .playback button.eject {
-  color: var(--brass);
+  color: var(--gold);
+}
+
+/* Same way-out treatment as Done on the shelf. */
+.playback button.is-primary {
+  background: var(--gold-pale);
+  color: var(--hud-btn-ink);
+  box-shadow:
+    0 0 0 2px rgba(255, 231, 168, 0.55),
+    0 0 18px rgba(232, 197, 107, 0.75);
+}
+
+.playback button.is-primary:hover:not(:disabled) {
+  background: var(--gold-bright);
+  color: var(--hud-btn-ink);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .create-overlay {
@@ -439,11 +595,11 @@ canvas {
 .album-title {
   margin: 0;
   font-family: var(--pixel);
-  font-size: clamp(1.35rem, 3.2vw, 2rem);
+  font-size: var(--machine-xl);
   font-weight: 400;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--track-wide);
   text-transform: uppercase;
-  color: #fff;
+  color: var(--paper);
   text-shadow: var(--hud-glow);
 }
 
@@ -461,12 +617,13 @@ canvas {
   gap: 0.42rem;
   border: 3px solid rgba(255, 255, 255, 0.28);
   background: #000;
-  color: #fff;
-  padding: 0.62rem 0.85rem;
+  color: var(--paper);
+  min-height: 2.75rem;
+  padding: 0.6rem 0.95rem;
   font-family: var(--pixel);
-  font-size: 0.7rem;
+  font-size: var(--machine-md);
   font-weight: 400;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--track-machine);
   text-transform: uppercase;
   cursor: pointer;
   transition:
@@ -477,10 +634,10 @@ canvas {
 .album-key {
   display: grid;
   place-items: center;
-  width: 1.15rem;
-  height: 1.15rem;
+  width: 1.3rem;
+  height: 1.3rem;
   border: 1.6px solid currentColor;
-  font-size: 0.7rem;
+  font-size: var(--machine-sm);
   font-weight: 400;
   letter-spacing: 0;
   line-height: 1;
@@ -497,11 +654,22 @@ canvas {
 }
 
 .album-prompt.is-primary:hover:not(:disabled) {
-  background: #c9a05a;
+  background: var(--gold-warm);
 }
 
 .album-prompt.is-danger {
-  color: #c9a09a;
+  color: var(--rose);
+}
+
+/* The confirmed delete is the one lit key on the confirm page. */
+.album-prompt.is-danger.is-primary {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--hud-btn-ink);
+}
+
+.album-prompt.is-danger.is-primary:hover:not(:disabled) {
+  background: var(--danger-hover);
 }
 
 .album-prompt:disabled {
@@ -515,7 +683,7 @@ canvas {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  color: #fff;
+  color: var(--paper);
   background: #000;
   border: 3px solid rgba(255, 255, 255, 0.28);
   box-shadow: var(--hud-glow);
@@ -537,12 +705,15 @@ canvas {
   display: grid;
   min-height: 14rem;
   height: 100%;
+  overflow: hidden;
   background: #0c0b09;
   padding: 0;
   border: 3px solid rgba(255, 255, 255, 0.22);
 }
 
 .album-frame-inner {
+  position: absolute;
+  inset: 0;
   display: grid;
   min-height: 0;
   height: 100%;
@@ -560,19 +731,40 @@ canvas {
 
 .album-photo-empty {
   appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
   border: 0;
-  color: rgba(255, 255, 255, 0.42);
+  outline: 2px dashed rgba(255, 255, 255, 0.28);
+  outline-offset: -0.9rem;
+  color: var(--paper-soft);
   font-family: var(--pixel);
-  font-size: 0.85rem;
+  font-size: var(--machine-md);
   font-style: normal;
   font-weight: 400;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--track-wide);
   text-transform: uppercase;
   cursor: pointer;
 }
 
+.album-photo-empty-title {
+  font-size: var(--machine-lg);
+  color: var(--paper);
+}
+
+.album-photo-empty-sub {
+  font-family: var(--readable);
+  font-size: var(--text-md);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--paper-soft);
+}
+
 .album-photo-empty:hover:not(:disabled) {
-  color: #fff;
+  color: var(--paper);
+  outline-color: var(--hud-btn-hover);
 }
 
 .album-photo-empty:disabled {
@@ -583,13 +775,13 @@ canvas {
   position: absolute;
   top: 0.55rem;
   right: 0.55rem;
-  width: 1.6rem;
-  height: 1.6rem;
+  width: 2rem;
+  height: 2rem;
   border: var(--hud-btn-border);
   background: #000;
-  color: #fff;
+  color: var(--paper);
   font-family: var(--pixel);
-  font-size: 1rem;
+  font-size: var(--machine-lg);
   line-height: 1;
   cursor: pointer;
 }
@@ -609,11 +801,11 @@ canvas {
 .album-info-title {
   margin: 0 0 0.45rem;
   font-family: var(--pixel);
-  font-size: 0.95rem;
+  font-size: var(--machine-md);
   font-weight: 400;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--track-wide);
   text-transform: uppercase;
-  color: #fff;
+  color: var(--paper);
   text-shadow: var(--hud-glow);
 }
 
@@ -623,14 +815,15 @@ canvas {
   gap: 0.28rem;
   padding: 0.7rem 0 0.75rem;
   border-top: 1px solid rgba(255, 255, 255, 0.16);
-  font-family: var(--pixel);
 }
 
+/* Field names are device labels; what you type reads as plain text. */
 .album-row span {
-  font-size: 0.62rem;
-  letter-spacing: 0.1em;
+  font-family: var(--font-label);
+  font-size: var(--text-sm);
+  letter-spacing: var(--track-wide);
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--paper-soft);
 }
 
 .album-row input,
@@ -639,15 +832,16 @@ canvas {
   appearance: none;
   width: 100%;
   margin: 0;
-  padding: 0.35rem 0.55rem;
+  padding: 0.45rem 0.6rem;
   border: 3px solid rgba(255, 255, 255, 0.22);
   background-color: rgba(255, 250, 240, 0.06);
-  color: #fff;
-  font-family: var(--pixel);
-  font-size: 0.95rem;
+  color: var(--paper);
+  font-family: var(--font-label);
+  font-size: var(--text-md);
+  font-variant-numeric: tabular-nums;
   font-style: normal;
   font-weight: 400;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--track-tight);
 }
 
 .album-row em {
@@ -664,8 +858,7 @@ canvas {
 }
 
 .album-row input::placeholder {
-  color: rgba(255, 255, 255, 0.35);
-  text-transform: uppercase;
+  color: var(--paper-faint);
 }
 
 .album-row select {
@@ -679,7 +872,7 @@ canvas {
 
 .album-row select option {
   background: #0a0806;
-  color: #fff;
+  color: var(--paper);
 }
 
 .album-date {
@@ -690,15 +883,14 @@ canvas {
 
 .album-note {
   margin: 0.45rem 0 0;
-  font-family: var(--pixel);
-  font-size: 0.7rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.72);
+  font-family: var(--readable);
+  font-size: var(--text-md);
+  line-height: 1.4;
+  color: var(--paper-soft);
 }
 
 .album-note.is-error {
-  color: #e2a09a;
+  color: var(--rose);
 }
 
 .album-confirm {
@@ -714,11 +906,10 @@ canvas {
 .album-confirm-lead {
   margin: 0.4rem 0 0;
   max-width: 34rem;
-  font-family: var(--pixel);
-  font-size: 0.95rem;
-  letter-spacing: 0.04em;
-  line-height: 1.55;
-  color: rgba(255, 255, 255, 0.82);
+  font-family: var(--readable);
+  font-size: var(--text-lg);
+  line-height: 1.5;
+  color: var(--paper);
 }
 
 .album-strip {
@@ -743,7 +934,7 @@ canvas {
 .album-thumbs {
   display: grid;
   min-width: 0;
-  grid-template-rows: repeat(2, minmax(3.6rem, 1fr));
+  grid-template-rows: repeat(var(--rows, 2), minmax(3.6rem, 1fr));
   grid-auto-flow: row;
   gap: 3px;
   margin: 0;
@@ -774,7 +965,7 @@ canvas {
 }
 
 .album-thumb.error {
-  border-color: #8a2a28;
+  border-color: var(--danger-deep);
 }
 
 .album-thumb.processing {
@@ -790,16 +981,16 @@ canvas {
   padding: 0;
   border: 0;
   background: #14110c;
-  color: rgba(255, 255, 255, 0.38);
+  color: var(--paper-faint);
   cursor: pointer;
   font-family: var(--pixel);
-  font-size: 0.85rem;
+  font-size: var(--machine-md);
   font-weight: 400;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--track-machine);
 }
 
 .album-thumb.is-empty button:hover:not(:disabled) {
-  color: #fff;
+  color: var(--paper);
   background: #1c1814;
 }
 
@@ -815,9 +1006,9 @@ canvas {
 .album-thumb-ph {
   display: grid;
   place-items: center;
-  color: #efe8dc;
-  font-family: var(--pixel);
-  font-size: 0.95rem;
+  color: var(--paper);
+  font-family: var(--font-label);
+  font-size: var(--text-sm);
 }
 
 .create-file {
@@ -842,8 +1033,9 @@ canvas {
     gap: 0.55rem 0.8rem;
   }
 
-  .album-title {
-    font-size: 1.2rem;
+  .album-title,
+  .about-title {
+    font-size: var(--machine-lg);
   }
 
   .album-stage {
@@ -857,147 +1049,739 @@ canvas {
   }
 }
 
-/* Intro gate */
-.name-gate {
-  --name-gate-control-h: 4.4rem;
+/* Tutorial highlight: a gold glow that breathes. Keyboard focus is a separate,
+   steady paper-white ring (see :focus-visible), so the two never read as one. */
+.guide-target {
+  position: relative;
+  z-index: 1;
+  box-shadow:
+    0 0 0 2px var(--gold),
+    0 0 18px rgba(232, 197, 107, 0.7);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .guide-target {
+    animation: guide-pulse 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes guide-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 2px var(--gold),
+      0 0 10px rgba(232, 197, 107, 0.45);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px var(--gold-bright),
+      0 0 22px rgba(255, 231, 168, 0.85);
+  }
+}
+
+.guide-layer {
   position: absolute;
   inset: 0;
-  z-index: 1100;
+  z-index: 32;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.guide-callout {
+  position: absolute;
+  left: 0;
+  top: 0;
+  visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  width: max-content;
+  min-width: min(15rem, calc(100vw - 1.5rem));
+  max-width: min(20rem, calc(100vw - 1.5rem));
+  padding: 0.7rem 0.95rem 0.55rem;
+  background: var(--panel);
+  border: 3px solid var(--gold);
+  box-shadow: var(--hud-glow);
+  pointer-events: auto;
+  text-align: center;
+}
+
+.guide-close {
+  appearance: none;
+  position: absolute;
+  top: 0.2rem;
+  right: 0.2rem;
   display: grid;
   place-items: center;
-  padding: 2rem 1.6rem;
+  width: 2rem;
+  height: 2rem;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--gold);
+  cursor: pointer;
+}
+
+.guide-close svg {
+  width: 0.85rem;
+  height: 0.85rem;
+  stroke: currentColor;
+  stroke-width: 2.6;
+  stroke-linecap: square;
+  fill: none;
+}
+
+.guide-close:hover {
+  color: var(--paper);
+}
+
+.guide-callout p {
+  margin: 0;
+  width: 100%;
+  padding: 0 1.2rem;
+  font-family: var(--readable);
+  font-size: var(--text-lg);
+  line-height: 1.4;
+  color: var(--paper);
+  text-align: center;
+}
+
+.guide-skip {
+  appearance: none;
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  color: var(--gold);
+  font-family: var(--pixel);
+  font-size: var(--machine-md);
+  letter-spacing: var(--track-wide);
+  line-height: 1.2;
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-underline-offset: 0.28em;
+  text-decoration-thickness: 1px;
+  min-height: 0;
+  padding: 0.3rem 0.4rem;
+  cursor: pointer;
+}
+
+.guide-skip:hover {
+  color: var(--paper);
+}
+
+.scene-loader {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  z-index: 25;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  min-width: 12rem;
+  padding: 0.9rem 1.1rem;
+  background: var(--panel);
+  border: 3px solid var(--line);
+  box-shadow: var(--hud-glow);
+  pointer-events: none;
+  text-align: center;
+}
+
+.scene-loader p {
+  margin: 0;
+  font-family: var(--pixel);
+  font-size: var(--machine-md);
+  letter-spacing: var(--track-machine);
+  text-transform: uppercase;
+}
+
+.scene-loader-pct {
+  opacity: 0.7;
+}
+
+.intro {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  /* A warm pool of projector light in the middle, falling off to the void. */
+  background: radial-gradient(
+    ellipse 60% 55% at 50% 50%,
+    rgba(232, 197, 107, 0.09) 0%,
+    rgba(20, 15, 10, 0.62) 45%,
+    rgba(6, 5, 4, 0.95) 100%
+  );
+  backdrop-filter: blur(8px);
+  animation: intro-in 0.6s ease both;
+}
+
+/* Faint scanlines so the title screen reads as projected, not printed. */
+.intro::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.07) 0,
+    rgba(0, 0, 0, 0.07) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  mix-blend-mode: multiply;
+}
+
+@keyframes intro-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.intro-card {
+  --corner: rgba(232, 197, 107, 0.75);
+  position: relative;
+  z-index: 1;
+  width: min(36rem, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.1rem;
+  padding: 2.75rem 2.25rem 2.25rem;
+  text-align: center;
+  /* Viewfinder corners, drawn in the same 3px weight as the HUD borders. */
+  background:
+    linear-gradient(var(--corner), var(--corner)) top left / 1.5rem 3px,
+    linear-gradient(var(--corner), var(--corner)) top left / 3px 1.5rem,
+    linear-gradient(var(--corner), var(--corner)) top right / 1.5rem 3px,
+    linear-gradient(var(--corner), var(--corner)) top right / 3px 1.5rem,
+    linear-gradient(var(--corner), var(--corner)) bottom left / 1.5rem 3px,
+    linear-gradient(var(--corner), var(--corner)) bottom left / 3px 1.5rem,
+    linear-gradient(var(--corner), var(--corner)) bottom right / 1.5rem 3px,
+    linear-gradient(var(--corner), var(--corner)) bottom right / 3px 1.5rem;
+  background-repeat: no-repeat;
+  animation: intro-rise 0.9s 0.15s ease both;
+}
+
+@keyframes intro-rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem);
+  }
+}
+
+.intro-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin: 0;
+  font-family: var(--pixel);
+  font-size: var(--machine-md);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold);
+  text-shadow: var(--hud-glow);
+}
+
+.intro-eyebrow::before,
+.intro-eyebrow::after {
+  content: "";
+  width: 1.75rem;
+  height: 2px;
+  background: currentColor;
+  opacity: 0.6;
+}
+
+.intro-title {
+  margin: 0;
+  font-family: var(--pixel);
+  /* Display size: the one deliberate exception to the scale. */
+  font-size: clamp(2.6rem, 8vw, 4.4rem);
+  font-weight: 400;
+  letter-spacing: var(--track-machine);
+  line-height: 1.05;
+  text-transform: uppercase;
+  color: var(--paper);
+  text-shadow:
+    0 0 18px rgba(232, 197, 107, 0.35),
+    var(--hud-glow);
+}
+
+.intro-lead {
+  margin: 0;
+  max-width: 30rem;
+  text-wrap: balance;
+  font-family: var(--readable);
+  font-size: var(--text-lg);
+  line-height: 1.5;
+  color: var(--paper);
+  opacity: 0.88;
+}
+
+.intro-enter {
+  margin-top: 0.75rem;
+  min-height: 3rem;
+  padding: 0.7rem 1.75rem;
+  font-size: var(--machine-md);
+  box-shadow: 0 0 22px rgba(168, 123, 60, 0.45);
+}
+
+.intro-hint {
+  margin: 0;
+  font-family: var(--pixel);
+  font-size: var(--machine-sm);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--paper);
+  opacity: 0.6;
+  animation: intro-blink 1.6s 1.2s steps(2, jump-none) infinite;
+}
+
+@keyframes intro-blink {
+  50% {
+    opacity: 0.15;
+  }
+}
+
+@media (max-width: 640px) {
+  .intro-card {
+    padding: 2.25rem 1.4rem 1.9rem;
+  }
+}
+
+.btn-primary {
+  appearance: none;
+  border: var(--hud-btn-border);
+  font-family: var(--pixel);
+  font-size: var(--machine-md);
+  letter-spacing: var(--track-machine);
+  text-transform: uppercase;
+  min-height: 3rem;
+  padding: 0.7rem 1.4rem;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: var(--hud-btn-hover);
+  color: var(--hud-btn-ink);
+}
+
+.btn-primary:hover {
+  background: var(--gold-warm);
+}
+
+.about-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 46;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
   background: radial-gradient(
     circle at 50% 42%,
     rgba(20, 15, 10, 0.82) 0%,
     rgba(6, 5, 4, 0.96) 70%
   );
   backdrop-filter: blur(10px);
-  animation: name-gate-in 0.5s ease both;
 }
 
-@keyframes name-gate-in {
-  from {
-    opacity: 0;
-  }
-}
-
-.name-gate-card {
-  width: min(48rem, 100%);
+.about-panel {
+  width: min(36rem, 100%);
+  max-height: calc(100% - 1rem);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.2rem;
-  text-align: center;
 }
 
-.name-gate-title {
-  margin: 0 0 2.4rem;
+.about-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0 0.1rem 0.7rem;
+}
+
+.about-title {
+  margin: 0;
   font-family: var(--pixel);
-  font-size: clamp(2.4rem, 7vw, 4.2rem);
+  font-size: var(--machine-xl);
   font-weight: 400;
-  letter-spacing: 0.08em;
-  line-height: 1.25;
+  letter-spacing: var(--track-wide);
   text-transform: uppercase;
-  color: #fff;
+  color: var(--paper);
   text-shadow: var(--hud-glow);
 }
 
-.name-gate-row {
-  display: flex;
-  align-items: stretch;
-  gap: 0.7rem;
-  width: min(40rem, 100%);
+.about-body {
+  overflow: auto;
+  padding: 1.35rem 1.45rem 1.4rem;
 }
 
-.name-gate-field,
-.name-gate-submit {
-  height: var(--name-gate-control-h);
-  box-sizing: border-box;
-  border: 3px solid rgba(255, 255, 255, 0.28);
+.about-body p {
+  margin: 0 0 0.85rem;
+  font-family: var(--readable);
+  font-size: var(--text-lg);
+  line-height: 1.5;
+  color: var(--paper);
 }
 
-.name-gate-field {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  padding: 0 1.25rem;
-  background: rgba(255, 250, 240, 0.06);
-  transition:
-    border-color 0.2s ease,
-    background 0.2s ease;
-}
-
-.name-gate-field:focus-within {
-  background: rgba(255, 250, 240, 0.1);
-}
-
-.name-gate-row:focus-within .name-gate-field,
-.name-gate-row:focus-within .name-gate-submit {
-  border-color: var(--brass);
-}
-
-.name-gate-field input {
-  appearance: none;
-  width: 100%;
-  min-width: 0;
-  height: auto;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  font-family: var(--pixel);
-  font-weight: 400;
-  font-size: clamp(1.35rem, 3.2vw, 1.85rem);
-  letter-spacing: 0.06em;
+.about-body .about-sign {
+  margin: 1.1rem 0 0;
+  font-family: var(--font-hand);
+  /* Caveat runs small for its size; a signature, not body text. */
+  font-size: 1.9rem;
   line-height: 1;
-  text-align: left;
+  color: var(--gold);
+}
+
+.about-body .about-credit {
+  margin: 1.25rem 0 0;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  font-family: var(--font-machine);
+  font-size: var(--machine-sm);
+  letter-spacing: var(--track-wide);
   text-transform: uppercase;
-  color: #fff;
-  /* Pixelify's caps sit high in the em box; nudge so they read as centered. */
-  transform: translateY(0.12em);
+  color: var(--paper-faint);
 }
 
-.name-gate-field input:focus {
-  outline: none;
+.fallback {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  overflow: auto;
+  padding: 5.5rem 1.25rem 2rem;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(40, 28, 18, 0.55), transparent 42%),
+    #0c121c;
 }
 
-.name-gate-field input::placeholder {
-  color: rgba(255, 255, 255, 0.42);
-  font-size: inherit;
-  letter-spacing: 0.08em;
-  line-height: inherit;
+.fallback-copy {
+  width: min(40rem, 100%);
+  margin: 0 auto 1.25rem;
+}
+
+.fallback-copy h1,
+.fallback-viewer h2 {
+  margin: 0 0 0.4rem;
+  font-family: var(--pixel);
+  font-size: var(--machine-lg);
+  font-weight: 400;
+  letter-spacing: var(--track-tight);
   text-transform: uppercase;
 }
 
-.name-gate-submit {
+.fallback-copy p,
+.fallback-empty p,
+.fallback-meta p,
+.fallback-error {
+  margin: 0;
+  font-family: var(--readable);
+  font-size: var(--text-md);
+  line-height: 1.45;
+}
+
+.fallback-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.9rem;
+  width: min(40rem, 100%);
+  margin: 0 auto;
+}
+
+.fallback-tapes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  width: min(52rem, 100%);
+  margin: 0 auto 1rem;
+}
+
+.fallback-tape {
   appearance: none;
-  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.75rem;
+  border: 3px solid var(--line);
+  background: #000;
+  color: var(--paper);
+  font-family: var(--font-label);
+  font-size: var(--text-sm);
+  letter-spacing: var(--track-tight);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.fallback-tape.is-selected {
+  border-color: var(--hud-btn-hover);
+  box-shadow: 0 0 0 1px var(--hud-btn-hover);
+}
+
+.fallback-tape-meta {
+  font-family: var(--readable);
+  font-size: var(--text-sm);
+  letter-spacing: 0;
+  text-transform: none;
+  opacity: 0.78;
+}
+
+.fallback-viewer {
+  width: min(52rem, 100%);
+  margin: 0 auto;
+}
+
+.fallback-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem 1rem;
+  margin-bottom: 0.7rem;
+}
+
+.fallback-frame {
   display: grid;
   place-items: center;
-  background: #000;
-  color: #fff;
-  font-family: var(--pixel);
-  font-weight: 400;
-  font-size: clamp(1.35rem, 3.2vw, 1.85rem);
-  letter-spacing: 0.08em;
-  line-height: 1;
-  text-transform: uppercase;
-  padding: 0 1.6rem;
-  white-space: nowrap;
-  cursor: pointer;
-  transition:
-    background 0.2s ease,
-    border-color 0.2s ease,
-    opacity 0.2s ease;
+  width: 100%;
+  max-height: min(62vh, 40rem);
+  background: #0e0c0a;
+  border: 3px solid rgba(255, 255, 255, 0.16);
 }
 
-.name-gate-submit:hover:not(:disabled) {
+.fallback-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: min(62vh, 40rem);
+  object-fit: contain;
+}
+
+.fallback-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.75rem;
+}
+
+.fallback-nav button {
+  appearance: none;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.85rem;
+  border: var(--hud-btn-border);
+  background: #000;
+  color: var(--paper);
+  font-family: var(--pixel);
+  font-size: var(--machine-md);
+  letter-spacing: var(--track-machine);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.fallback-nav button:hover:not(:disabled) {
   background: var(--hud-btn-hover);
   color: var(--hud-btn-ink);
 }
 
-.name-gate-submit:disabled {
-  opacity: 0.45;
+.fallback-nav button:disabled {
+  opacity: 0.35;
   cursor: default;
+}
+
+@media (max-width: 720px) {
+  .top-bar {
+    top: 0.55rem;
+    right: 0.55rem;
+    left: 0.55rem;
+    max-width: none;
+    justify-content: space-between;
+  }
+
+  .hud-link {
+    padding: 0 0.4rem;
+    font-size: var(--machine-sm);
+  }
+
+  .hud-action {
+    min-width: 0;
+    padding: 0 0.6rem;
+    font-size: var(--machine-sm);
+  }
+
+  /* The label already says what the key does; the glyph is the first thing
+     to go when a phone runs out of toolbar. */
+  .hud-action svg {
+    display: none;
+  }
+
+  .top-bar-actions {
+    margin-left: 0.3rem;
+    padding-left: 0.3rem;
+  }
+
+  .playback {
+    bottom: 0.55rem;
+  }
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .intro,
+  .intro-card,
+  .intro-hint {
+    animation: none;
+  }
+}
+
+/* The room is a focus target of its own, so arrows and Enter act on it. */
+.room-region {
+  position: absolute;
+  inset: 0;
+}
+
+.room-region:focus {
+  outline: none;
+}
+
+.room-region:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: -6px;
+}
+
+.help-toggle {
+  min-width: 2.75rem;
+  padding: 0;
+  font-size: var(--machine-lg);
+}
+
+.album-key.is-wide {
+  width: auto;
+  padding: 0 0.3rem;
+}
+
+.help-controls {
+  width: 100%;
+  margin: 0.4rem 0 1rem;
+  border-collapse: collapse;
+  font-family: var(--readable);
+  font-size: var(--text-md);
+  line-height: 1.4;
+}
+
+.help-controls th,
+.help-controls td {
+  padding: 0.45rem 0.5rem 0.45rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  text-align: left;
+  vertical-align: top;
+}
+
+.help-controls caption {
+  padding-bottom: 0.3rem;
+  text-align: left;
+  font-family: var(--pixel);
+  font-size: var(--machine-sm);
+  font-weight: 400;
+  letter-spacing: var(--track-wide);
+  text-transform: uppercase;
+  color: var(--paper-soft);
+}
+
+.help-controls tbody th {
+  width: 45%;
+  font-weight: 500;
+}
+
+.help-note {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: var(--text-sm);
+  color: var(--paper-soft);
+}
+
+.help-keys {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.help-keys kbd {
+  min-width: 1.6rem;
+  padding: 0.1rem 0.35rem;
+  border: 1.6px solid var(--paper-soft);
+  font-family: var(--pixel);
+  font-size: var(--machine-sm);
+  text-align: center;
+}
+
+/* Reduced motion's stand-in for camera flights: a fade, never a move. */
+.motion-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  background: #070605;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* The playback hint, inline in the panel when there's no room beside it. */
+.playback-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.2rem 0.75rem;
+  padding: 0.5rem 0.7rem;
+  border: 2px solid var(--gold);
+  background: rgba(232, 197, 107, 0.08);
+}
+
+.playback-hint p {
+  margin: 0;
+  font-family: var(--readable);
+  font-size: var(--text-md);
+  line-height: 1.35;
+  color: var(--paper);
+}
+
+.playback-hint .guide-skip {
+  padding: 0.2rem 0;
+}
+
+.playback .playback-hint .guide-skip {
+  min-height: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--gold);
+  font-size: var(--machine-sm);
+}
+
+/* Short screens (a phone on its side): a slimmer panel leaves the memory room. */
+@media (max-height: 520px) {
+  .playback {
+    gap: 0.4rem;
+    padding: 0.5rem 0.75rem 0.6rem;
+    bottom: 0.5rem;
+  }
+
+  .playback-date,
+  .playback-progress {
+    display: none;
+  }
+
+  .playback button {
+    min-height: 2.5rem;
+  }
+
+  .playback button.is-icon {
+    width: 2.5rem;
+    min-width: 2.5rem;
+  }
 }

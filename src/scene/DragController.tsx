@@ -13,14 +13,18 @@ export function DragController() {
 
   useEffect(() => {
     if (!curating) return;
-    const release = () => {
+    const release = (event: PointerEvent) => {
+      if (dragState.active) endDrag(event.clientX, event.clientY);
+    };
+    // A cancelled pointer (the browser took the gesture) is never a tap.
+    const cancel = () => {
       if (dragState.active) endDrag();
     };
     window.addEventListener('pointerup', release);
-    window.addEventListener('pointercancel', release);
+    window.addEventListener('pointercancel', cancel);
     return () => {
       window.removeEventListener('pointerup', release);
-      window.removeEventListener('pointercancel', release);
+      window.removeEventListener('pointercancel', cancel);
       cancelDrag();
     };
   }, [curating]);

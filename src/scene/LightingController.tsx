@@ -68,8 +68,8 @@ const TABLE_SPILL_SCALE = 0.32;
 // Fog — kept out of the shell so the room stays crisp. In the overview it
 // starts just past the far wall and eases the shell into the same warm black
 // the mist fades toward.
-const FOG_CATALOG = new THREE.Color('#0b0908');
-const FOG_PLAYBACK = new THREE.Color('#0b0908');
+const FOG_CATALOG = new THREE.Color('#040303');
+const FOG_PLAYBACK = new THREE.Color('#040303');
 const FOG_MIX = new THREE.Color();
 const FOG_NEAR_CATALOG = 16;
 const FOG_FAR_CATALOG = 32;
@@ -77,7 +77,7 @@ const FOG_NEAR_PLAYBACK = 7;
 const FOG_FAR_PLAYBACK = 18;
 const FOG_NEAR_ORBIT = 11;
 const FOG_FAR_ORBIT = 24;
-const VOID = new THREE.Color('#0b0908');
+const VOID = new THREE.Color('#040303');
 
 // Tone mapping — catalog bright enough to read spines, darker in playback
 const TM_BASE = 0.5;
