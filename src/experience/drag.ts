@@ -32,7 +32,15 @@ export const dragState = {
   z: 0,
   /** Distance from the camera it is held at, eased between the two regions. */
   hold: 0,
+  /** Where and when the press started, to tell a tap from a drag. */
+  downX: 0,
+  downY: 0,
+  downAt: 0,
 };
+
+/** A press that barely moves and lets go quickly is a tap, not a drag. */
+const TAP_SLOP_PX = 8;
+const TAP_MS = 350;
 
 /** Screen distance, in NDC, within which a slot counts as hovered. */
 const SNAP_RADIUS = 0.22;
@@ -55,8 +63,17 @@ export function dragReleasedRecently(): boolean {
   return performance.now() - releasedAt < 250;
 }
 
-export function beginDrag(id: string, from: THREE.Vector3, camera: THREE.Camera): void {
+export function beginDrag(
+  id: string,
+  from: THREE.Vector3,
+  camera: THREE.Camera,
+  clientX: number,
+  clientY: number,
+): void {
   dragState.active = true;
+  dragState.downX = clientX;
+  dragState.downY = clientY;
+  dragState.downAt = performance.now();
   dragState.id = id;
   dragState.fromCollection = getState().collectionIds.includes(id);
   dragState.target = null;
@@ -159,12 +176,37 @@ export function trackDrag(
   dragState.z = _point.z;
 }
 
+/**
+ * Send a tape across: crate to shelf, or shelf to crate. The alternative to
+ * dragging for taps and keys. A full crate refuses rather than guessing which
+ * tape to trade out; the curation panel says so.
+ */
+export function moveTape(id: string): boolean {
+  if (getState().collectionIds.includes(id)) {
+    removeFromCollection(id);
+    return true;
+  }
+  if (!canAddToCollection()) return false;
+  addToCollection(id);
+  return true;
+}
+
 /** Commit the drop. A full crate trades places instead of refusing the drag. */
-export function endDrag(): void {
-  const { active, id, target, fromCollection } = dragState;
+export function endDrag(clientX?: number, clientY?: number): void {
+  const { active, id, target, fromCollection, downX, downY, downAt } = dragState;
   releasedAt = performance.now();
   reset();
   if (!active || !id) return;
+
+  const tapped =
+    clientX !== undefined &&
+    clientY !== undefined &&
+    Math.hypot(clientX - downX, clientY - downY) < TAP_SLOP_PX &&
+    releasedAt - downAt < TAP_MS;
+  if (tapped) {
+    moveTape(id);
+    return;
+  }
 
   if (target?.kind === 'crate') {
     const filled = getState().collectionIds.length;

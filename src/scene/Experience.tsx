@@ -1,24 +1,56 @@
 import { ContactShadows } from '@react-three/drei';
-import { Canvas } from '@react-three/fiber';
-import { Suspense } from 'react';
+import { Canvas, events as pointerEvents } from '@react-three/fiber';
+import { Suspense, useState } from 'react';
 import * as THREE from 'three';
 import { exitCuration } from '../experience/curation';
 import { dragReleasedRecently } from '../experience/drag';
 import { CATALOG_CAM, fitPoseToAspect, TABLE_TOP } from '../experience/layout';
 import { getState, setCrateSelected } from '../state/store';
+import { ExperienceFrame } from '../ui/SceneFallback';
+import { canUseWebGL, markWebGLFailed } from '../ui/sceneStatus';
 import { CameraController } from './CameraController';
 import { CartridgeCrate } from './CartridgeCrate';
 import { Cartridges } from './Cartridges';
 import { DragController } from './DragController';
+import { GuideAnchor } from './GuideAnchor';
 import { LightingController } from './LightingController';
 import { ProjectionScreen } from './ProjectionScreen';
 import { Projector } from './Projector';
 import { Room } from './Room';
+import { VoidMist } from './VoidMist';
+
+function isActionButton(object: THREE.Object3D): boolean {
+  for (let o: THREE.Object3D | null = object; o; o = o.parent) {
+    if (o.userData?.action) return true;
+  }
+  return false;
+}
+
+/** PLAY / EDIT render on top of the room, so they also take the pointer first. */
+function actionButtonsFirst(hits: THREE.Intersection[]): THREE.Intersection[] {
+  const buttons = hits.filter((hit) => isActionButton(hit.object));
+  if (!buttons.length) return hits;
+  return [...buttons, ...hits.filter((hit) => !isActionButton(hit.object))];
+}
 
 export function Experience() {
+  const [failed, setFailed] = useState(() => {
+    const bad = !canUseWebGL();
+    if (bad) markWebGLFailed();
+    return bad;
+  });
+
   return (
+    <ExperienceFrame
+      failed={failed}
+      onFail={() => {
+        markWebGLFailed();
+        setFailed(true);
+      }}
+    >
     <Canvas
       shadows="soft"
+      events={(store) => ({ ...pointerEvents(store), filter: actionButtonsFirst })}
       dpr={[1, 1.6]}
       gl={{
         antialias: true,
@@ -41,6 +73,11 @@ export function Experience() {
           camera.updateProjectionMatrix();
         }
         gl.shadowMap.type = THREE.PCFSoftShadowMap;
+        gl.domElement.addEventListener('webglcontextlost', (event) => {
+          event.preventDefault();
+          markWebGLFailed();
+          setFailed(true);
+        });
       }}
       onPointerMissed={() => {
         if (getState().mode === 'CURATING') {
@@ -52,12 +89,14 @@ export function Experience() {
         setCrateSelected(null);
       }}
     >
-      <color attach="background" args={['#000000']} />
-      <fog attach="fog" args={['#000000', 16, 32]} />
+      <color attach="background" args={['#0b0908']} />
+      <fog attach="fog" args={['#0b0908', 16, 32]} />
       <CameraController />
+      <GuideAnchor />
       <DragController />
       <LightingController />
       <Room />
+      <VoidMist />
       <Suspense fallback={null}>
         <Projector />
         <Cartridges />
@@ -75,5 +114,6 @@ export function Experience() {
         color="#2a1608"
       />
     </Canvas>
+    </ExperienceFrame>
   );
 }

@@ -10,7 +10,10 @@ import {
   MAGAZINE_HOVER_LIFT,
   magazineCrateInner,
 } from '../experience/layout';
+import { sceneApi } from '../experience/sceneApi';
+import { ADD_TARGET, useGuideTargetId } from '../state/guide';
 import { getState, setCreateOpen, useExperience } from '../state/store';
+import { GuideGlow } from './GuideGlow';
 
 /**
  * Label paper as fractions of the placeholder's front face. The sheet sits high
@@ -116,21 +119,21 @@ function drawAddLabel(
   ctx.fillStyle = INK;
 
   ctx.letterSpacing = '0.02em';
-  const headSize = fitFontSize(ctx, 'NEW', textW, headCap / CAP, typeface);
+  const headSize = fitFontSize(ctx, 'ADD', textW, headCap / CAP, typeface);
   ctx.letterSpacing = '0.06em';
-  const subSize = fitFontSize(ctx, 'MAGAZINE', textW, subCap / CAP, typeface);
+  const subSize = fitFontSize(ctx, 'TAPE', textW, subCap / CAP, typeface);
 
   const block = headSize * CAP + gap + subSize * CAP;
   const top = (h - block) / 2;
 
   ctx.letterSpacing = '0.02em';
   ctx.font = `${WEIGHT} ${headSize}px ${typeface}`;
-  ctx.fillText('NEW', pad, top + headSize * CAP);
+  ctx.fillText('ADD', pad, top + headSize * CAP);
 
   ctx.letterSpacing = '0.06em';
   ctx.font = `${WEIGHT} ${subSize}px ${typeface}`;
   ctx.fillStyle = 'rgba(29, 20, 8, 0.88)';
-  ctx.fillText('MAGAZINE', pad, top + block);
+  ctx.fillText('TAPE', pad, top + block);
   ctx.letterSpacing = '0em';
 
   return canvas;
@@ -156,6 +159,7 @@ export function NewMagazineSlot() {
   const createOpen = useExperience((s) => s.createOpen);
   const [hover, setHover] = useState(false);
   const [fontsReady, setFontsReady] = useState(false);
+  const guideTargetId = useGuideTargetId();
   useEffect(() => {
     void document.fonts.ready.then(() => setFontsReady(true));
   }, []);
@@ -172,6 +176,16 @@ export function NewMagazineSlot() {
   const live = mode === 'CATALOG' && !createOpen && !isMagazineSelectionLocked();
   const lit = hover && live;
   useCursor(lit, 'pointer');
+
+  useLayoutEffect(() => {
+    const g = group.current;
+    if (!g) return;
+    g.userData.guideSize = { w: t, h, d };
+    sceneApi.addSlot = g;
+    return () => {
+      if (sceneApi.addSlot === g) sceneApi.addSlot = null;
+    };
+  }, [t, h, d]);
 
   useLayoutEffect(() => {
     const g = group.current;
@@ -226,6 +240,7 @@ export function NewMagazineSlot() {
         setCreateOpen(true);
       }}
     >
+      {guideTargetId === ADD_TARGET && <GuideGlow width={t} height={h} depth={d} />}
       <mesh position={[0, h / 2, 0]} castShadow>
         <boxGeometry args={[t, h, d]} />
         <meshStandardMaterial

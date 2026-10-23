@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type ChangeEvent,
+  type CSSProperties,
   type DragEvent,
 } from 'react';
 import { MAX_PHOTOS } from '../lib/images/imageConfig';
@@ -76,6 +77,7 @@ export function CreateMagazineModal({ open }: Props) {
   const titleId = useId();
   const titleRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const pickRef = useRef<HTMLButtonElement>(null);
   const photosRef = useRef<DraftPhoto[]>([]);
   const dragIndex = useRef<number | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -123,7 +125,8 @@ export function CreateMagazineModal({ open }: Props) {
   useEffect(() => {
     if (!open) return;
     setClosing(false);
-    const id = window.setTimeout(() => titleRef.current?.focus(), 40);
+    // Choosing photos is the first thing to do, so it takes focus first.
+    const id = window.setTimeout(() => pickRef.current?.focus(), 40);
     return () => window.clearTimeout(id);
   }, [open]);
 
@@ -189,14 +192,14 @@ export function CreateMagazineModal({ open }: Props) {
       const used = photosRef.current.length;
       const room = MAX_PHOTOS - used;
       if (room <= 0) {
-        pushErrors([`A magazine can hold up to ${MAX_PHOTOS} photographs.`]);
+        pushErrors([`A tape can hold up to ${MAX_PHOTOS} memories.`]);
         return;
       }
 
       const overflow = incoming.length > room;
       const accepted = incoming.slice(0, room);
       if (overflow) {
-        pushErrors([`A magazine can hold up to ${MAX_PHOTOS} photographs.`]);
+        pushErrors([`A tape can hold up to ${MAX_PHOTOS} memories.`]);
       }
 
       const drafts: DraftPhoto[] = accepted.map((file) => ({
@@ -315,13 +318,13 @@ export function CreateMagazineModal({ open }: Props) {
   async function onCreate() {
     const name = title.trim();
     if (!name) {
-      setFieldError('Please name this magazine.');
+      setFieldError('Please name this tape.');
       titleRef.current?.focus();
       return;
     }
     if (processing) return;
     if (!readyPhotos.length) {
-      setFieldError('Add at least one photograph.');
+      setFieldError('Add at least one memory.');
       return;
     }
     setFieldError(null);
@@ -352,7 +355,7 @@ export function CreateMagazineModal({ open }: Props) {
       }, 180);
     } catch {
       setSaving(false);
-      setFieldError("Couldn't save this magazine on this device. Try again.");
+      setFieldError("Couldn't save this tape on this device. Try again.");
     }
   }
 
@@ -367,10 +370,15 @@ export function CreateMagazineModal({ open }: Props) {
   const slotCount = albumSlotCount(photos.length, MAX_PHOTOS);
   const columns = Math.max(8, Math.ceil(slotCount / 2));
   const canAdd = photos.length < MAX_PHOTOS && !saving;
+  const missing = [
+    !title.trim() && 'a name',
+    readyPhotos.length === 0 && !processing && 'at least one photo',
+  ].filter((item): item is string => Boolean(item));
 
   return (
     <AlbumLayout
       closing={closing}
+      heading="Add a tape"
       titleId={titleId}
       dropActive={dropActive}
       onBackdropMouseDown={(event) => {
@@ -384,47 +392,67 @@ export function CreateMagazineModal({ open }: Props) {
       prompts={
         <>
           <button type="button" className="album-prompt" onClick={close} disabled={saving}>
-            <span className="album-key">B</span>
+            <span className="album-key is-wide">Esc</span>
             Back
           </button>
           <button
             type="button"
             className="album-prompt is-primary"
             onClick={() => void onCreate()}
-            disabled={saving || processing}
+            disabled={saving || processing || missing.length > 0}
+            aria-describedby={missing.length > 0 ? 'create-missing' : undefined}
           >
-            <span className="album-key">A</span>
-            {saving ? 'Saving…' : processing ? 'Preparing…' : 'Create'}
+            {saving ? 'Saving…' : processing ? 'Preparing…' : 'Add tape'}
           </button>
         </>
       }
       featured={
-        selected?.thumbUrl ? (
-          <>
-            <img src={selected.thumbUrl} alt={selected.fileName} />
-            <button
-              type="button"
-              className="album-photo-remove"
-              aria-label={`Remove ${selected.fileName}`}
-              onClick={() => removePhoto(selected.key)}
-            >
-              ×
-            </button>
-          </>
-        ) : (
-          <button
-            type="button"
-            className="album-photo-empty"
-            onClick={openPicker}
+        <>
+          <input
+            ref={fileRef}
+            className="create-file"
+            type="file"
+            accept="image/*"
+            multiple
             disabled={!canAdd}
-          >
-            {canAdd ? 'Add photographs' : 'Album is full'}
-          </button>
-        )
+            onChange={onPick}
+            aria-label="Choose photos"
+          />
+          {selected?.thumbUrl ? (
+            <>
+              <img src={selected.thumbUrl} alt={selected.fileName} />
+              <button
+                type="button"
+                className="album-photo-remove"
+                aria-label={`Remove ${selected.fileName}`}
+                onClick={() => removePhoto(selected.key)}
+              >
+                ×
+              </button>
+            </>
+          ) : (
+            <button
+              ref={pickRef}
+              type="button"
+              className="album-photo-empty"
+              onClick={openPicker}
+              disabled={!canAdd}
+            >
+              {canAdd ? (
+                <>
+                  <span className="album-photo-empty-title">+ Add memories</span>
+                  <span className="album-photo-empty-sub">Choose photos, or drop them here</span>
+                </>
+              ) : (
+                'This tape is full'
+              )}
+            </button>
+          )}
+        </>
       }
       info={
         <>
-          <h3 className="album-info-title">Info</h3>
+          <h3 className="album-info-title">Details</h3>
           <label className="album-row">
             <span>Name</span>
             <input
@@ -432,7 +460,7 @@ export function CreateMagazineModal({ open }: Props) {
               type="text"
               value={title}
               maxLength={48}
-              placeholder="Untitled"
+              placeholder="Name this tape"
               autoComplete="off"
               onChange={(event) => {
                 setTitle(event.target.value);
@@ -468,7 +496,7 @@ export function CreateMagazineModal({ open }: Props) {
             </div>
           </div>
           <div className="album-row">
-            <span>Photographs</span>
+            <span>Memories</span>
             <em>
               {photos.length} / {MAX_PHOTOS}
               {readyPhotos.length !== photos.length
@@ -482,6 +510,11 @@ export function CreateMagazineModal({ open }: Props) {
               {progress.total > 0 ? ` — ${progressPercent}%` : ''}
             </p>
           )}
+          {missing.length > 0 && !progress && (
+            <p className="album-note" id="create-missing">
+              To add this tape, give it {missing.join(' and ')}.
+            </p>
+          )}
           {fieldError && <p className="album-note is-error">{fieldError}</p>}
           {errors.map((message, index) => (
             <p key={`${index}:${message}`} className="album-note is-error">
@@ -491,61 +524,59 @@ export function CreateMagazineModal({ open }: Props) {
         </>
       }
       strip={
-        <div className="album-thumbs-wrap">
-          <input
-            ref={fileRef}
-            className="create-file"
-            type="file"
-            accept="image/*"
-            multiple
-            disabled={!canAdd}
-            onChange={onPick}
-          />
-          <ul
-            className="album-thumbs"
-            style={{ gridTemplateColumns: `repeat(${columns}, minmax(4.05rem, 1fr))` }}
-          >
-            {Array.from({ length: slotCount }, (_, index) => {
-              const photo = photos[index];
-              if (!photo) {
+        photos.length === 0 ? undefined : (
+          <div className="album-thumbs-wrap">
+            <ul
+              className="album-thumbs"
+              style={
+                {
+                  gridTemplateColumns: `repeat(${columns}, minmax(4.05rem, 1fr))`,
+                  '--rows': slotCount > columns ? 2 : 1,
+                } as CSSProperties
+              }
+            >
+              {Array.from({ length: slotCount }, (_, index) => {
+                const photo = photos[index];
+                if (!photo) {
+                  return (
+                    <li key={`empty-${index}`} className="album-thumb is-empty">
+                      <button
+                        type="button"
+                        disabled={!canAdd}
+                        onClick={openPicker}
+                        aria-label="Add more memories"
+                      >
+                        +
+                      </button>
+                    </li>
+                  );
+                }
+                const isSelected = (selected?.key ?? null) === photo.key;
                 return (
-                  <li key={`empty-${index}`} className="album-thumb is-empty">
-                    <button
-                      type="button"
-                      disabled={!canAdd}
-                      onClick={openPicker}
-                      aria-label={`Add photograph ${index + 1}`}
-                    >
-                      {index + 1}
-                    </button>
+                  <li
+                    key={photo.key}
+                    className={`album-thumb ${photo.status} ${isSelected ? 'is-selected' : ''}`}
+                    draggable={photo.status === 'ready'}
+                    onClick={() => setSelectedKey(photo.key)}
+                    onDragStart={onThumbDragStart(index)}
+                    onDragOver={onThumbDragOver(index)}
+                    onDragEnd={() => {
+                      dragIndex.current = null;
+                    }}
+                  >
+                    {photo.thumbUrl ? (
+                      <img src={photo.thumbUrl} alt={photo.fileName} draggable={false} />
+                    ) : (
+                      <span className="album-thumb-ph">
+                        {photo.status === 'error' ? 'Error' : '…'}
+                      </span>
+                    )}
                   </li>
                 );
-              }
-              const isSelected = (selected?.key ?? null) === photo.key;
-              return (
-                <li
-                  key={photo.key}
-                  className={`album-thumb ${photo.status} ${isSelected ? 'is-selected' : ''}`}
-                  draggable={photo.status === 'ready'}
-                  onClick={() => setSelectedKey(photo.key)}
-                  onDragStart={onThumbDragStart(index)}
-                  onDragOver={onThumbDragOver(index)}
-                  onDragEnd={() => {
-                    dragIndex.current = null;
-                  }}
-                >
-                  {photo.thumbUrl ? (
-                    <img src={photo.thumbUrl} alt={photo.fileName} draggable={false} />
-                  ) : (
-                    <span className="album-thumb-ph">
-                      {photo.status === 'error' ? '!' : '…'}
-                    </span>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+              })}
+            </ul>
+          </div>
+        )
       }
     />
   );

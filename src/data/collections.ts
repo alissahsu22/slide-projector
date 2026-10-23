@@ -1,140 +1,45 @@
 import type { Collection, Photo } from '../types/collection';
-import { placeholderPhotos } from '../lib/placeholderPhotos';
+import { publicUrl } from '../lib/publicUrl';
 
-function photos(
-  folder: string,
-  count: number,
-  portraits: number[] = [],
-): Photo[] {
-  return Array.from({ length: count }, (_, i) => {
-    const n = String(i + 1).padStart(2, '0');
-    const portrait = portraits.includes(i);
-    return {
-      id: `${folder}-${n}`,
-      src: `/photos/${folder}/${n}.jpg`,
-      order: i,
-      width: portrait ? 900 : 1600,
-      height: portrait ? 1400 : 1067,
-    };
-  });
-}
+const SF_SUMMER_PHOTOS: Photo[] = [
+  { id: 'sf-summer-01', src: publicUrl('photos/sf-summer/01.webp'), thumbSrc: publicUrl('photos/sf-summer/01.thumb.webp'), order: 0, width: 1920, height: 1440 },
+  { id: 'sf-summer-02', src: publicUrl('photos/sf-summer/02.webp'), thumbSrc: publicUrl('photos/sf-summer/02.thumb.webp'), order: 1, width: 1440, height: 1920 },
+  { id: 'sf-summer-03', src: publicUrl('photos/sf-summer/03.webp'), thumbSrc: publicUrl('photos/sf-summer/03.thumb.webp'), order: 2, width: 1440, height: 1920 },
+  { id: 'sf-summer-04', src: publicUrl('photos/sf-summer/04.webp'), thumbSrc: publicUrl('photos/sf-summer/04.thumb.webp'), order: 3, width: 1440, height: 1920 },
+  { id: 'sf-summer-05', src: publicUrl('photos/sf-summer/05.webp'), thumbSrc: publicUrl('photos/sf-summer/05.thumb.webp'), order: 4, width: 1440, height: 1920 },
+  { id: 'sf-summer-06', src: publicUrl('photos/sf-summer/06.webp'), thumbSrc: publicUrl('photos/sf-summer/06.thumb.webp'), order: 5, width: 1920, height: 1440 },
+  { id: 'sf-summer-07', src: publicUrl('photos/sf-summer/07.webp'), thumbSrc: publicUrl('photos/sf-summer/07.thumb.webp'), order: 6, width: 1440, height: 1920 },
+  { id: 'sf-summer-08', src: publicUrl('photos/sf-summer/08.webp'), thumbSrc: publicUrl('photos/sf-summer/08.thumb.webp'), order: 7, width: 1920, height: 1440 },
+  { id: 'sf-summer-09', src: publicUrl('photos/sf-summer/09.webp'), thumbSrc: publicUrl('photos/sf-summer/09.thumb.webp'), order: 8, width: 1440, height: 1920 },
+  { id: 'sf-summer-10', src: publicUrl('photos/sf-summer/10.webp'), thumbSrc: publicUrl('photos/sf-summer/10.thumb.webp'), order: 9, width: 1920, height: 1440 },
+  { id: 'sf-summer-11', src: publicUrl('photos/sf-summer/11.webp'), thumbSrc: publicUrl('photos/sf-summer/11.thumb.webp'), order: 10, width: 1920, height: 1440 },
+  { id: 'sf-summer-12', src: publicUrl('photos/sf-summer/12.webp'), thumbSrc: publicUrl('photos/sf-summer/12.thumb.webp'), order: 11, width: 1440, height: 1920 },
+  { id: 'sf-summer-13', src: publicUrl('photos/sf-summer/13.webp'), thumbSrc: publicUrl('photos/sf-summer/13.thumb.webp'), order: 12, width: 1920, height: 1440 },
+  { id: 'sf-summer-14', src: publicUrl('photos/sf-summer/14.webp'), thumbSrc: publicUrl('photos/sf-summer/14.thumb.webp'), order: 13, width: 1440, height: 1920 },
+  { id: 'sf-summer-15', src: publicUrl('photos/sf-summer/15.webp'), thumbSrc: publicUrl('photos/sf-summer/15.thumb.webp'), order: 14, width: 1440, height: 1920 },
+  { id: 'sf-summer-16', src: publicUrl('photos/sf-summer/16.webp'), thumbSrc: publicUrl('photos/sf-summer/16.thumb.webp'), order: 15, width: 1920, height: 1440 },
+  { id: 'sf-summer-17', src: publicUrl('photos/sf-summer/17.webp'), thumbSrc: publicUrl('photos/sf-summer/17.thumb.webp'), order: 16, width: 1920, height: 1440 },
+  { id: 'sf-summer-18', src: publicUrl('photos/sf-summer/18.webp'), thumbSrc: publicUrl('photos/sf-summer/18.thumb.webp'), order: 17, width: 1440, height: 1920 },
+  { id: 'sf-summer-19', src: publicUrl('photos/sf-summer/19.webp'), thumbSrc: publicUrl('photos/sf-summer/19.thumb.webp'), order: 18, width: 1206, height: 1608 },
+  { id: 'sf-summer-20', src: publicUrl('photos/sf-summer/20.webp'), thumbSrc: publicUrl('photos/sf-summer/20.thumb.webp'), order: 19, width: 1104, height: 1370 },
+  { id: 'sf-summer-21', src: publicUrl('photos/sf-summer/21.webp'), thumbSrc: publicUrl('photos/sf-summer/21.thumb.webp'), order: 20, width: 1020, height: 734 },
+];
 
 /**
- * Solid-color stand-ins in /public/photos — swap `src` for real photographs.
- * Keep `id` stable so localStorage progress still maps correctly.
+ * Magazines that ship with the site. Add another entry here (and files under
+ * `public/photos/`) to put a second real tape in the crate.
+ * Keep `id` values stable so remembered slide positions in localStorage still match.
  */
-export const MOCK_COLLECTIONS: Collection[] = [
+export const BUILTIN_COLLECTIONS: Collection[] = [
   {
-    id: 'thailand',
-    title: 'Thailand',
-    date: 'June 2026',
-    coverImage: '/photos/thailand/01.jpg',
-    currentSlide: 0,
-    photos: photos('thailand', 8, [2]),
-    bodyColor: '#e4d2b4',
-    accentColor: '#c45a32',
-    labelTint: '#f4ead4',
-  },
-  {
-    id: 'sf',
+    id: 'sf-summer',
     title: 'SF Summer',
-    date: 'July 2026',
-    coverImage: '/photos/sf/01.jpg',
+    date: 'Summer 2026',
+    coverImage: publicUrl('photos/sf-summer/01.webp'),
     currentSlide: 0,
-    photos: photos('sf', 8, [4]),
+    photos: SF_SUMMER_PHOTOS,
     bodyColor: '#cfd6c8',
     accentColor: '#3f6f88',
     labelTint: '#eef1e6',
-  },
-  {
-    id: 'nyc',
-    title: 'New York',
-    date: 'Fall 2025',
-    coverImage: '/photos/nyc/01.jpg',
-    currentSlide: 0,
-    photos: photos('nyc', 8, [2]),
-    bodyColor: '#d7b7a2',
-    accentColor: '#6b2f2a',
-    labelTint: '#f0e2d0',
-  },
-  {
-    id: 'japan',
-    title: 'Japan',
-    date: 'April 2026',
-    currentSlide: 0,
-    photos: placeholderPhotos('japan', 'Japan', 8, [1, 5]),
-    bodyColor: '#d8d0c4',
-    accentColor: '#8a2a28',
-    labelTint: '#f2ece0',
-  },
-  {
-    id: 'berlin',
-    title: 'Berlin',
-    date: 'Mar 2024',
-    currentSlide: 0,
-    photos: placeholderPhotos('berlin', 'Berlin', 8, [3]),
-    bodyColor: '#c8c4bc',
-    accentColor: '#3a3a40',
-    labelTint: '#ece8e0',
-  },
-  {
-    id: 'lisbon',
-    title: 'Lisbon',
-    date: 'May 2025',
-    currentSlide: 0,
-    photos: placeholderPhotos('lisbon', 'Lisbon', 8, [2]),
-    bodyColor: '#e0c8a8',
-    accentColor: '#c47838',
-    labelTint: '#f4ead8',
-  },
-  {
-    id: 'morocco',
-    title: 'Morocco',
-    date: 'Oct 2025',
-    currentSlide: 0,
-    photos: placeholderPhotos('morocco', 'Morocco', 8, [4]),
-    bodyColor: '#dcc4a0',
-    accentColor: '#b44a28',
-    labelTint: '#f0e4d0',
-  },
-  {
-    id: 'iceland',
-    title: 'Iceland',
-    date: 'Jan 2026',
-    currentSlide: 0,
-    photos: placeholderPhotos('iceland', 'Iceland', 8, [0, 6]),
-    bodyColor: '#c8d0d4',
-    accentColor: '#3a6a88',
-    labelTint: '#e8eef0',
-  },
-  {
-    id: 'kyoto',
-    title: 'Kyoto',
-    date: 'Nov 2024',
-    currentSlide: 0,
-    photos: placeholderPhotos('kyoto', 'Kyoto', 8, [2, 5]),
-    bodyColor: '#d4c8b8',
-    accentColor: '#6a3a28',
-    labelTint: '#f0e8dc',
-  },
-  {
-    id: 'paris',
-    title: 'Paris',
-    date: 'June 2024',
-    currentSlide: 0,
-    photos: placeholderPhotos('paris', 'Paris', 8, [3]),
-    bodyColor: '#d0c8bc',
-    accentColor: '#4a5a78',
-    labelTint: '#ece6dc',
-  },
-  {
-    id: 'osaka',
-    title: 'Osaka',
-    date: 'Aug 2025',
-    currentSlide: 0,
-    photos: placeholderPhotos('osaka', 'Osaka', 8),
-    bodyColor: '#d8c8b0',
-    accentColor: '#b83828',
-    labelTint: '#f2e8d8',
   },
 ];

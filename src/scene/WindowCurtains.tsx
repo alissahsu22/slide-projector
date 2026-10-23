@@ -3,8 +3,9 @@ import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { ROOM_H, ROOM_HALF_W, ROOM_MID_Z } from './roomDims';
 import { WINDOW_H, WINDOW_W } from './windowDims';
+import { publicUrl } from '../lib/publicUrl';
 
-const CURTAIN_URL = '/models/curtains.glb';
+const CURTAIN_URL = publicUrl('models/curtains.glb');
 /** Rod a little wider than the pane so the panels cover the frame. */
 const WIDTH_EXTRA = 0.35;
 /** How far the rod sits above the top of the glass. */

@@ -37,3 +37,10 @@ export const cameraFollow = {
   active: false,
   id: null as string | null,
 };
+
+/**
+ * 1 = the rig is an authored pose, refitted to the viewport every frame.
+ * 0 = the rig is already framed for this viewport (playback) and is used as-is.
+ * Tweened between the two so leaving or entering playback stays one smooth move.
+ */
+export const cameraFit = { amount: 1 };

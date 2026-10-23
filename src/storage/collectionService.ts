@@ -27,6 +27,7 @@ function toPhoto(photo: StoredPhoto): Photo {
   return {
     id: photo.id,
     src: objectUrlFor(`photo:${photo.id}`, photo.imageBlob),
+    thumbSrc: objectUrlFor(`thumb:${photo.id}`, photo.thumbnailBlob),
     order: photo.order,
     width: photo.width,
     height: photo.height,

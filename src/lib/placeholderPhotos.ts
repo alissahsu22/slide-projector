@@ -154,20 +154,6 @@ function drawSlide(
   ctx.fillText(caption, width / 2, height * 0.5, width * 0.8);
 }
 
-function makeRect(
-  width: number,
-  height: number,
-  bg: string,
-  inner: string,
-  caption: string,
-): string {
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  drawSlide(canvas, bg, inner, caption);
-  return canvas.toDataURL('image/jpeg', 0.82);
-}
-
 export function getPlaceholderTexture(photo: Photo, title?: string): THREE.CanvasTexture {
   const hit = textureCache.get(photo.id);
   if (hit) return hit;
@@ -175,8 +161,11 @@ export function getPlaceholderTexture(photo: Photo, title?: string): THREE.Canva
   const folder = photo.id.split('-')[0] ?? 'thailand';
   const swatches = SWATCHES[folder] ?? SWATCHES.thailand;
   const [bg, inner] = swatches[photo.order % swatches.length] ?? ['#4a2a18', '#c45a32'];
-  const width = photo.width && photo.width > 0 ? photo.width : 1200;
-  const height = photo.height && photo.height > 0 ? photo.height : 800;
+  const srcW = photo.width && photo.width > 0 ? photo.width : 1200;
+  const srcH = photo.height && photo.height > 0 ? photo.height : 800;
+  const scale = Math.min(1, 512 / Math.max(srcW, srcH));
+  const width = Math.max(1, Math.round(srcW * scale));
+  const height = Math.max(1, Math.round(srcH * scale));
   const n = String(photo.order + 1).padStart(2, '0');
   const caption = `${(title ?? folder).toUpperCase()}  ${n}`;
 
@@ -193,28 +182,4 @@ export function getPlaceholderTexture(photo: Photo, title?: string): THREE.Canva
   tex.needsUpdate = true;
   textureCache.set(photo.id, tex);
   return tex;
-}
-
-export function placeholderPhotos(
-  folder: string,
-  title: string,
-  count: number,
-  portraits: number[] = [],
-) {
-  const swatches = SWATCHES[folder] ?? SWATCHES.thailand;
-  return Array.from({ length: count }, (_, i) => {
-    const portrait = portraits.includes(i);
-    const width = portrait ? 800 : 1200;
-    const height = portrait ? 1200 : 800;
-    const [bg, inner] = swatches[i % swatches.length];
-    const n = String(i + 1).padStart(2, '0');
-    const src = makeRect(width, height, bg, inner, `${title}  ${n}`);
-    return {
-      id: `${folder}-${n}`,
-      src,
-      order: i,
-      width,
-      height,
-    };
-  });
 }

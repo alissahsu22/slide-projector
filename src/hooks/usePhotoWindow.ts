@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { loadPhoto, retainPhotos } from '../media/photoCache';
+import { retainPhotos } from '../media/photoCache';
+import { keepPhotoSrcs, preloadPhotoWindow } from '../media/photoWindow';
 import type { Collection } from '../types/collection';
 
 export function usePhotoWindow(
@@ -7,22 +8,19 @@ export function usePhotoWindow(
   slideIndex: number,
   collections: Collection[],
 ): void {
+  const photos = insertedId
+    ? collections.find((c) => c.id === insertedId)?.photos
+    : undefined;
+  const photoKey = photos?.map((p) => `${p.src}\n${p.thumbSrc ?? ''}`).join('\0') ?? '';
+
   useEffect(() => {
-    if (!insertedId) return;
-    const col = collections.find((c) => c.id === insertedId);
-    if (!col) return;
+    if (!insertedId || !photos?.length) return;
 
-    const keep = new Set<string>();
-    col.photos.forEach((p) => keep.add(p.src));
-    const start = Math.max(0, slideIndex - 2);
-    const end = Math.min(col.photos.length - 1, slideIndex + 5);
-    for (let i = start; i <= end; i++) {
-      const src = col.photos[i]?.src;
-      if (!src) continue;
-      void loadPhoto(src).catch(() => undefined);
-    }
-
+    preloadPhotoWindow(photos, slideIndex);
+    const keep = keepPhotoSrcs(photos, slideIndex);
     const timer = window.setTimeout(() => retainPhotos(keep), 2500);
     return () => window.clearTimeout(timer);
-  }, [insertedId, slideIndex, collections]);
+    // photoKey stands in for `photos` so hover/store churn doesn't reset the window.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [insertedId, slideIndex, photoKey]);
 }

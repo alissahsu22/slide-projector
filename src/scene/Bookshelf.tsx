@@ -1,7 +1,10 @@
 import { useCursor, useGLTF } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { canEnterCuration, enterCuration } from '../experience/curation';
+import { prefersReducedMotion } from '../lib/motion';
+import { getState } from '../state/store';
 import { CRATE_MAGAZINE } from '../experience/layout';
 import {
   SHELF_FRONT_INSET,
@@ -34,6 +37,9 @@ const LABEL_TONES = [
   '#c2b6c8',
   '#d6b98f',
 ];
+
+/** How far the decorative tapes fade back while the shelf is open. */
+const DRESSING_DIM = 0.32;
 
 const RUN_GAP = { min: 0.017, max: 0.046 };
 /** Ceiling on how far the last magazine of a run flops into the gap. */
@@ -137,6 +143,19 @@ function buildRows(): MagazineSlot[] {
  */
 function ShelvedMagazines() {
   const slots = useMemo(buildRows, []);
+  const shellMat = useRef<THREE.MeshStandardMaterial>(null);
+  const labelMat = useRef<THREE.MeshStandardMaterial>(null);
+  const shade = useRef(1);
+
+  // While curating, the dressing steps back into shadow so the real tapes on
+  // the library planks are the ones that read as movable.
+  useFrame((_, delta) => {
+    const goal = getState().mode === 'CURATING' ? DRESSING_DIM : 1;
+    const k = prefersReducedMotion() ? 1 : Math.min(1, delta * 5);
+    shade.current += (goal - shade.current) * k;
+    shellMat.current?.color.setScalar(shade.current);
+    labelMat.current?.color.setScalar(shade.current);
+  });
   const shells = useRef<THREE.InstancedMesh>(null);
   const labels = useRef<THREE.InstancedMesh>(null);
 
@@ -195,10 +214,11 @@ function ShelvedMagazines() {
         castShadow
         receiveShadow
       >
-        <meshStandardMaterial color="#ffffff" roughness={0.8} metalness={0.08} />
+        <meshStandardMaterial ref={shellMat} color="#ffffff" roughness={0.8} metalness={0.08} />
       </instancedMesh>
       <instancedMesh ref={labels} args={[geometry.label, undefined, slots.length]}>
         <meshStandardMaterial
+          ref={labelMat}
           color="#ffffff"
           roughness={0.9}
           metalness={0}

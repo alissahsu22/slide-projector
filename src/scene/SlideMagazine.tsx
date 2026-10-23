@@ -32,7 +32,6 @@ import {
 } from './magazineLayout';
 
 const PLASTIC = '#171614';
-const PLASTIC_INNER = '#0e0d0c';
 
 const LABEL_BACKING_Z = 0.0002;
 const LABEL_BACKING_THICKNESS = 0.0004;
@@ -207,7 +206,7 @@ function MagazineFilm({
   useEffect(() => {
     setMap(fallback);
     let live = true;
-    void loadPhoto(photo.src)
+    void loadPhoto(photo.thumbSrc ?? photo.src)
       .then((tex) => {
         if (live) setMap(tex);
       })
@@ -294,7 +293,7 @@ export const SlideMagazine = forwardRef<THREE.Group, SlideMagazineProps>(
       () =>
         new THREE.BoxGeometry(
           MAGAZINE.ribThickness,
-          MAGAZINE.ribHeight,
+          MAGAZINE.topLip,
           MAGAZINE.innerWidth - MAGAZINE.topLip * 2,
         ),
       [],
@@ -343,7 +342,7 @@ export const SlideMagazine = forwardRef<THREE.Group, SlideMagazineProps>(
       const ribs = ribsRef.current;
       if (!ribs || ribCount === 0) return;
       const dummy = new THREE.Object3D();
-      const y = MAGAZINE.floor + MAGAZINE.innerHeight - MAGAZINE.ribHeight / 2;
+      const y = MAGAZINE.floor + MAGAZINE.innerHeight + MAGAZINE.topLip / 2;
       for (let i = 0; i < ribCount; i++) {
         dummy.position.set(magazineSlotX(i, slots) + MAGAZINE.slotPitch / 2, y, 0);
         dummy.updateMatrix();
@@ -463,17 +462,23 @@ export const SlideMagazine = forwardRef<THREE.Group, SlideMagazineProps>(
               metalness={0.08}
             />
           </mesh>
+          {/* Closed core — the trough is a case, not a window onto the room. */}
           <mesh
-            position={[0, MAGAZINE.floor + 0.0002, 0]}
+            position={[0, MAGAZINE.floor + MAGAZINE.innerHeight / 2, 0]}
+            castShadow
             receiveShadow
           >
             <boxGeometry
-              args={[trough - 0.0004, 0.0004, MAGAZINE.innerWidth - 0.0004]}
+              args={[
+                trough - 0.0002,
+                MAGAZINE.innerHeight,
+                MAGAZINE.innerWidth - 0.0002,
+              ]}
             />
             <meshStandardMaterial
-              color={PLASTIC_INNER}
-              roughness={0.92}
-              metalness={0}
+              color={PLASTIC}
+              roughness={0.8}
+              metalness={0.08}
             />
           </mesh>
         </group>

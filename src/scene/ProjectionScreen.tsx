@@ -2,6 +2,7 @@ import { useFrame } from '@react-three/fiber';
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { SCREEN } from '../experience/layout';
+import { PROJECTED_PHOTO, projectedPhotoSize } from '../experience/playbackFrame';
 import { throwLevel, visuals } from '../experience/visuals';
 import { getPlaceholderTexture } from '../lib/placeholderPhotos';
 import {
@@ -13,8 +14,8 @@ import {
 import { getCachedPhoto, loadPhoto } from '../media/photoCache';
 import { useExperience } from '../state/store';
 
-const PHOTO_W = 1.86;
-const PHOTO_H = 1.24;
+const PHOTO_W = PROJECTED_PHOTO.w;
+const PHOTO_H = PROJECTED_PHOTO.h;
 
 function applyMap(
   mat: THREE.MeshStandardMaterial | THREE.MeshBasicMaterial | null,
@@ -55,6 +56,12 @@ export function ProjectionScreen() {
   const vignette = useMemo(() => getProjectionVignette(), []);
   const hotspot = useMemo(() => getProjectionHotspot(), []);
   const grain = useMemo(() => getProjectionGrain(), []);
+  const fit = useRef({ x: 1, y: 1 });
+
+  useLayoutEffect(() => {
+    const { w, h } = projectedPhotoSize(photo?.width, photo?.height);
+    fit.current = { x: w / PHOTO_W, y: h / PHOTO_H };
+  }, [photo]);
 
   useLayoutEffect(() => {
     const tex = (photo ? getCachedPhoto(photo.src) : null) ?? fallback;
@@ -96,7 +103,7 @@ export function ProjectionScreen() {
       );
       g.rotation.set(0, 0, visuals.settleRot);
       const s = visuals.settleScale;
-      g.scale.set(s, s, 1);
+      g.scale.set(s * fit.current.x, s * fit.current.y, 1);
       g.visible = on;
     }
 

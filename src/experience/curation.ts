@@ -7,6 +7,7 @@ import {
   SHELF_SLOT_PITCH,
   setShelfSlotsPerRow,
 } from '../scene/shelfDims';
+import { markShelved } from '../state/guide';
 import { getState, setState } from '../state/store';
 import { isInteractionLocked } from './controller';
 import { cancelDrag } from './drag';
@@ -18,6 +19,8 @@ import {
   restCratePose,
 } from './layout';
 import { tween } from './tween';
+import { prefersReducedMotion } from '../lib/motion';
+import { coverRoom, revealRoom } from '../ui/veil';
 import { cameraRig } from './visuals';
 
 /** World x of the shelved magazines' faces — everything below is framed off it. */
@@ -106,7 +109,7 @@ export function syncShelfRow(width: number, height: number): boolean {
   return setShelfSlotsPerRow(Math.max(framed, Math.ceil(needed)));
 }
 
-const FLIGHT = { duration: 1.05, ease: 'power2.inOut' };
+const FLIGHT = { duration: 0.85, ease: 'power2.inOut' };
 
 /** True while the crate is in the air, in either direction. */
 export function isCurationBusy(): boolean {
@@ -128,16 +131,35 @@ export function canEnterCuration(): boolean {
 
 export async function enterCuration(): Promise<void> {
   if (!canEnterCuration()) return;
+  markShelved();
   setState({ mode: 'CURATING', crateSelectedId: null, hoveredId: null, curationBusy: true });
   // Same cue as lifting a magazine to load it — the crate is being picked up.
   playSound('pickup');
+  await fly(getCurationCam(), getCurationCratePose());
+  setState({ curationBusy: false });
+}
+
+/**
+ * Carry the camera and the crate to their next pose together. Reduced motion
+ * cuts there behind a short fade instead of flying across the room.
+ */
+async function fly(
+  cam: CameraPose,
+  crate: { x: number; y: number; z: number; ry: number },
+): Promise<void> {
   gsap.killTweensOf(cameraRig);
   gsap.killTweensOf(crateRig);
+  if (prefersReducedMotion()) {
+    await coverRoom();
+    Object.assign(cameraRig, cam);
+    Object.assign(crateRig, crate);
+    await revealRoom();
+    return;
+  }
   await Promise.all([
-    tween(cameraRig, { ...getCurationCam(), ...FLIGHT }),
-    tween(crateRig, { ...getCurationCratePose(), ...FLIGHT }),
+    tween(cameraRig, { ...cam, ...FLIGHT }),
+    tween(crateRig, { ...crate, ...FLIGHT }),
   ]);
-  setState({ curationBusy: false });
 }
 
 export async function exitCuration(): Promise<void> {
@@ -148,12 +170,7 @@ export async function exitCuration(): Promise<void> {
   // immediately; `curationBusy` is what keeps the flight from being interrupted.
   setState({ mode: 'CATALOG', crateSelectedId: null, hoveredId: null, curationBusy: true });
   playSound('pickup');
-  gsap.killTweensOf(cameraRig);
-  gsap.killTweensOf(crateRig);
-  await Promise.all([
-    tween(cameraRig, { ...getCatalogCam(), ...FLIGHT }),
-    tween(crateRig, { ...restCratePose(), ...FLIGHT }),
-  ]);
+  await fly(getCatalogCam(), restCratePose());
   setState({ curationBusy: false });
 }
 

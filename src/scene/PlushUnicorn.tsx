@@ -1,8 +1,9 @@
 import { useGLTF } from '@react-three/drei';
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import { publicUrl } from '../lib/publicUrl';
 
-const PLUSH_URL = '/models/plush_unicorn.glb';
+const PLUSH_URL = publicUrl('models/plush_unicorn.glb');
 /** Sitting height in metres — a chunky floor toy, not a life-size horse. */
 const PLUSH_HEIGHT = 0.5;
 /** On the carpet, just right of the table, facing back into the room. y is lift off the floor. */

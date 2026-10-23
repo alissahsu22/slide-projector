@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/projects/upstairs-room", "destination": "/index.html" },
+    { "source": "/projects/upstairs-room/:path*", "destination": "/:path*" }
+  ]
+}

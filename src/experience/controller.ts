@@ -1,6 +1,8 @@
 import gsap from 'gsap';
 import { playSound } from '../audio/sounds';
 import { loadPhoto, retainPhotos } from '../media/photoCache';
+import { preloadPhotoWindow } from '../media/photoWindow';
+import { markAdvanced, markPlayed } from '../state/guide';
 import {
   getCollection,
   getState,
@@ -13,7 +15,6 @@ import {
   CRATE_SLIDE_Y,
   getCatalogCam,
   MAGAZINE_DOCK_SCALE,
-  PLAYBACK_CAM,
 } from './layout';
 import {
   getInsertionApproachWorld,
@@ -31,24 +32,29 @@ import {
   SLIDE_TRANSITION,
 } from './slideTransition';
 import { tween } from './tween';
-import { cameraFollow, cameraRig, visuals } from './visuals';
+import { cameraFit, cameraFollow, cameraRig, visuals } from './visuals';
+import { getPlaybackCam } from './playbackFrame';
+import { prefersReducedMotion } from '../lib/motion';
+import { coverRoom, revealRoom } from '../ui/veil';
 import { magazineRailX } from '../scene/magazineLayout';
 import * as THREE from 'three';
 import type { Object3D } from 'three';
 
 const AUTOPLAY_MS = 3500;
-const PRELOAD_BEHIND = 2;
-const PRELOAD_AHEAD = 5;
+
+/**
+ * One knob for how unhurried the tape feels going in and coming out. 1 is the
+ * brisk baseline; raise it to slow every step of the sequence evenly.
+ */
+const TAPE_PACE = 1.3;
+
+function pace(seconds: number): number {
+  return seconds * TAPE_PACE;
+}
 
 let sequenceLock = false;
 let slideLock = false;
 let autoplayTimer: ReturnType<typeof setTimeout> | null = null;
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, ms);
-  });
-}
 
 const _q0 = new THREE.Quaternion();
 const _q1 = new THREE.Quaternion();
@@ -157,7 +163,7 @@ async function ejectOffRail(group: Object3D): Promise<void> {
   const out = getInsertionApproachWorld();
   await tween(group.position, {
     y: group.position.y + 0.045,
-    duration: 0.38,
+    duration: pace(0.2),
     ease: 'power2.out',
   });
   if (out) {
@@ -165,13 +171,13 @@ async function ejectOffRail(group: Object3D): Promise<void> {
       x: out.x,
       y: out.y + 0.04,
       z: out.z,
-      duration: 0.85,
+      duration: pace(0.5),
       ease: 'power2.inOut',
     });
   } else {
     await tween(group.position, {
       y: group.position.y + 0.08,
-      duration: 0.55,
+      duration: pace(0.35),
       ease: 'power2.out',
     });
   }
@@ -187,19 +193,34 @@ async function returnToCrate(
       x: home.x,
       y: home.y + 0.07,
       z: home.z,
-      duration: 1.2,
+      duration: pace(0.65),
       ease: 'power2.inOut',
     }),
-    tweenQuaternion(group, crateRestQuaternion(home), 1.15, 'power2.inOut'),
+    tweenQuaternion(group, crateRestQuaternion(home), pace(0.6), 'power2.inOut'),
   ]);
 
   await tween(group.position, {
     x: home.x,
     y: home.y,
     z: home.z,
-    duration: 0.42,
+    duration: pace(0.2),
     ease: 'power2.inOut',
   });
+}
+
+/** Put a tape straight back in its crate slot, for cuts that skip the flight. */
+function snapToCrate(
+  group: Object3D,
+  home: { x: number; y: number; z: number; rx?: number; ry?: number; rz?: number },
+): void {
+  gsap.killTweensOf(group.position);
+  gsap.killTweensOf(group.rotation);
+  gsap.killTweensOf(group.scale);
+  if (isOnInsertionRail(group)) releaseFromInsertionRail(group);
+  group.scale.setScalar(MAGAZINE_DOCK_SCALE);
+  group.position.set(home.x, home.y, home.z);
+  group.quaternion.copy(crateRestQuaternion(home));
+  group.rotation.setFromQuaternion(group.quaternion);
 }
 
 async function liftFromCrate(group: Object3D): Promise<boolean> {
@@ -215,7 +236,7 @@ async function liftFromCrate(group: Object3D): Promise<boolean> {
   // Clear the crate walls before turning, so the swing happens in open air.
   await tween(group.position, {
     y: group.position.y + 0.11,
-    duration: 0.45,
+    duration: pace(0.24),
     ease: 'power2.out',
   });
 
@@ -224,10 +245,10 @@ async function liftFromCrate(group: Object3D): Promise<boolean> {
       x: approach.x,
       y: approach.y + 0.05,
       z: approach.z,
-      duration: 1.35,
+      duration: pace(0.75),
       ease: 'power2.inOut',
     }),
-    tweenQuaternion(group, orient, 1.35, 'power2.inOut'),
+    tweenQuaternion(group, orient, pace(0.75), 'power2.inOut'),
   ]);
   return true;
 }
@@ -257,16 +278,16 @@ async function insertOntoRail(group: Object3D, slideIndex: number): Promise<bool
       x: seated.x,
       y: seated.y + 0.045,
       z: seated.z,
-      duration: 0.85,
+      duration: pace(0.45),
       ease: 'power2.inOut',
     }),
-    tweenQuaternion(group, orient, 0.7, 'power2.inOut'),
+    tweenQuaternion(group, orient, pace(0.4), 'power2.inOut'),
   ]);
   await tween(group.position, {
     x: seated.x,
     y: seated.y,
     z: seated.z,
-    duration: 0.38,
+    duration: pace(0.18),
     ease: 'power2.in',
   });
 
@@ -283,9 +304,9 @@ function killProjection(): void {
   resetProjectionTransition();
 }
 
-const AFTER_CLICK_PAUSE_MS = 220;
-
+/** The camera's small kick as the slide gate fires. Skipped for reduced motion. */
 async function clickCamera(): Promise<void> {
+  if (prefersReducedMotion()) return;
   const py = cameraRig.py;
   const pz = cameraRig.pz;
   await tween(cameraRig, {
@@ -302,25 +323,20 @@ async function clickCamera(): Promise<void> {
   });
 }
 
-async function settlePlaybackCamera(): Promise<void> {
+/** Fly to the playback shot while the room dims around the projector. */
+async function settleIntoPlayback(): Promise<void> {
   gsap.killTweensOf(cameraRig);
-  await tween(cameraRig, {
-    ...PLAYBACK_CAM,
-    duration: 0.9,
-    ease: 'power2.inOut',
-  });
-}
-
-async function dimRoomThenProject(): Promise<void> {
+  gsap.killTweensOf(cameraFit);
   playSound('switch');
-  await tween(visuals, { roomLight: 0.05, duration: 0.95, ease: 'power1.inOut' });
-  await delay(520);
-  await startProjectionAfterSeat();
+  const { innerWidth: w, innerHeight: h } = window;
+  await Promise.all([
+    tween(cameraRig, { ...getPlaybackCam(w, h), duration: pace(0.8), ease: 'power2.inOut' }),
+    tween(cameraFit, { amount: 0, duration: pace(0.8), ease: 'power2.inOut' }),
+    tween(visuals, { roomLight: 0.05, duration: pace(0.7), ease: 'power1.inOut' }),
+  ]);
 }
 
 async function startProjectionAfterSeat(): Promise<void> {
-  await delay(AFTER_CLICK_PAUSE_MS);
-
   playSound('advance');
   void clickCamera();
   void joltMechanism(1);
@@ -343,6 +359,38 @@ async function startProjectionAfterSeat(): Promise<void> {
   });
 }
 
+/** Reduced motion: the projector is simply on, framed, and lit. */
+function cutToPlayback(): void {
+  gsap.killTweensOf(cameraRig);
+  gsap.killTweensOf(cameraFit);
+  gsap.killTweensOf(visuals);
+  Object.assign(cameraRig, getPlaybackCam(window.innerWidth, window.innerHeight));
+  cameraFit.amount = 0;
+  applySlideLandPose(getState().slideIndex);
+  Object.assign(visuals, {
+    roomLight: 0.05,
+    lamp: 1,
+    beam: 1,
+    projection: 1,
+    flicker: 1,
+    focus: 1,
+    interrupt: 1,
+    blur: 0,
+  });
+}
+
+/** Reduced motion: lights up, projector off, camera back at the desk. */
+function cutToCatalog(): void {
+  gsap.killTweensOf(cameraRig);
+  gsap.killTweensOf(cameraFit);
+  killProjection();
+  visuals.roomLight = 1;
+  visuals.flicker = 1;
+  visuals.interrupt = 1;
+  Object.assign(cameraRig, getCatalogCam());
+  cameraFit.amount = 1;
+}
+
 function clearAutoplay(): void {
   if (autoplayTimer !== null) {
     clearTimeout(autoplayTimer);
@@ -356,19 +404,8 @@ function currentCollection() {
 
 function preloadWindow(collectionId: string, index: number): Set<string> {
   const col = getCollection(collectionId);
-  const keep = new Set<string>();
-  if (!col) return keep;
-  for (const photo of col.photos) {
-    if (photo.src) keep.add(photo.src);
-  }
-  const start = Math.max(0, index - PRELOAD_BEHIND);
-  const end = Math.min(col.photos.length - 1, index + PRELOAD_AHEAD);
-  for (let i = start; i <= end; i++) {
-    const src = col.photos[i]?.src;
-    if (!src) continue;
-    void loadPhoto(src).catch(() => undefined);
-  }
-  return keep;
+  if (!col) return new Set();
+  return preloadPhotoWindow(col.photos, index);
 }
 
 export function scheduleAutoplay(): void {
@@ -382,27 +419,17 @@ export function scheduleAutoplay(): void {
     return;
   }
   autoplayTimer = setTimeout(() => {
-    void changeSlide(1);
+    void changeSlide(1, 'auto');
   }, AUTOPLAY_MS);
 }
 
-export async function enterPlaybackMode(): Promise<void> {
-  await Promise.all([
-    tween(cameraRig, { ...PLAYBACK_CAM, duration: 1.35, ease: 'power2.inOut' }),
-    tween(visuals, { roomLight: 0.05, duration: 0.85, ease: 'power1.inOut' }),
-    tween(visuals, { lamp: 1, duration: 0.7, delay: 0.12, ease: 'power1.out' }),
-    tween(visuals, { beam: 1, duration: 0.65, delay: 0.22, ease: 'power1.out' }),
-  ]);
+/** Hold the autoplay timer without moving the current memory. */
+export function pauseAutoplay(): void {
+  clearAutoplay();
 }
 
-export async function returnToCatalogMode(): Promise<void> {
-  await Promise.all([
-    tween(visuals, { projection: 0, flicker: 1, focus: 1, duration: 0.22 }),
-    tween(visuals, { beam: 0, duration: 0.28 }),
-    tween(visuals, { lamp: 0, duration: 0.4 }),
-    tween(visuals, { roomLight: 1, duration: 0.9, ease: 'power1.inOut' }),
-    tween(cameraRig, { ...getCatalogCam(), duration: 1.25, ease: 'power2.inOut' }),
-  ]);
+export function resumeAutoplay(): void {
+  if (getState().isPlaying && getState().mode === 'PLAYING') scheduleAutoplay();
 }
 
 async function joltMechanism(direction: number): Promise<void> {
@@ -482,16 +509,17 @@ async function waitForCurrentPhoto(id: string, index: number): Promise<void> {
   const col = getCollection(id);
   const src = col?.photos[index]?.src;
   if (!src) {
-    setState({ photoReady: false });
+    setState({ photoReady: false, photoError: true });
     return;
   }
-  setState({ photoReady: false });
+  setState({ photoReady: false, photoError: false });
   try {
     await loadPhoto(src);
+    setState({ photoReady: true, photoError: false });
   } catch {
-    // Placeholder texture on the screen still shows if the file fails.
+    // The wall keeps its stand-in card; the controls say the file failed.
+    setState({ photoReady: true, photoError: true });
   }
-  setState({ photoReady: true });
 }
 
 async function insertCartridge(id: string): Promise<void> {
@@ -509,48 +537,51 @@ async function insertCartridge(id: string): Promise<void> {
     slideIndex,
     isPlaying: false,
     photoReady: false,
+    photoError: false,
   });
   preloadWindow(id, slideIndex);
   void waitForCurrentPhoto(id, slideIndex);
 
   const { group } = handle;
-  followMagazine(id);
   playSound('pickup');
 
+  if (prefersReducedMotion()) {
+    await coverRoom();
+    gsap.killTweensOf(group.position);
+    gsap.killTweensOf(group.rotation);
+    seatOnInsertionRail(group, slideIndex);
+    persistSlide(id, slideIndex);
+    cutToPlayback();
+    await revealRoom();
+    beginPlayback();
+    return;
+  }
+
+  followMagazine(id);
   const lifted = await liftFromCrate(group);
-  if (!lifted) {
-    stopFollowingMagazine();
-    await returnToCrate(group, handle.home);
-    setState({
-      mode: 'CATALOG',
-      insertedId: null,
-      slideIndex: 0,
-      photoReady: false,
-    });
-    return;
-  }
-
-  await delay(420);
-  const seated = await insertOntoRail(group, slideIndex);
-  if (!seated) {
-    stopFollowingMagazine();
-    await returnToCrate(group, handle.home);
-    setState({
-      mode: 'CATALOG',
-      insertedId: null,
-      slideIndex: 0,
-      photoReady: false,
-    });
-    return;
-  }
-
+  const seated = lifted && (await insertOntoRail(group, slideIndex));
   stopFollowingMagazine();
-  persistSlide(id, slideIndex);
+  if (!seated) {
+    await returnToCrate(group, handle.home);
+    setState({
+      mode: 'CATALOG',
+      insertedId: null,
+      slideIndex: 0,
+      photoReady: false,
+      photoError: false,
+    });
+    return;
+  }
 
-  await delay(480);
-  await settlePlaybackCamera();
-  await dimRoomThenProject();
+  persistSlide(id, slideIndex);
+  await settleIntoPlayback();
+  await startProjectionAfterSeat();
+  beginPlayback();
+}
+
+function beginPlayback(): void {
   setState({ mode: 'PLAYING', isPlaying: true });
+  markPlayed();
   scheduleAutoplay();
 }
 
@@ -565,52 +596,79 @@ async function ejectCartridge(opts?: { dimOnly?: boolean }): Promise<void> {
     isPlaying: false,
     hoveredId: null,
     photoReady: false,
+    photoError: false,
   });
 
   gsap.killTweensOf(cameraRig);
+  gsap.killTweensOf(cameraFit);
   cameraFollow.active = false;
-
   playSound('switch');
+
+  if (prefersReducedMotion()) {
+    await coverRoom();
+    if (handle) snapToCrate(handle.group, handle.home);
+    finishEject();
+    if (opts?.dimOnly) {
+      // The next tape goes straight in; keep the dim, framed playback look.
+      visuals.roomLight = 0.05;
+      killProjection();
+    } else {
+      cutToCatalog();
+      setState({ mode: 'CATALOG', isPlaying: false });
+    }
+    await revealRoom();
+    return;
+  }
+
   await Promise.all([
-    tween(visuals, { projection: 0, duration: 0.22 }),
-    tween(visuals, { beam: 0, duration: 0.28 }),
-    tween(visuals, { lamp: 0, duration: 0.36 }),
+    tween(visuals, { projection: 0, duration: pace(0.2) }),
+    tween(visuals, { beam: 0, duration: pace(0.24) }),
+    tween(visuals, { lamp: 0, duration: pace(0.3) }),
   ]);
   visuals.flicker = 1;
   visuals.interrupt = 1;
   resetProjectionTransition();
 
   if (opts?.dimOnly) {
-    await tween(visuals, { roomLight: 0.05, duration: 0.4, ease: 'power1.out' });
     if (handle) {
       releaseFromInsertionRail(handle.group);
       await returnToCrate(handle.group, handle.home);
     }
-    setState({ insertedId: null, slideIndex: 0, photoReady: false });
-    retainPhotos(new Set());
+    finishEject();
     return;
   }
 
-  await delay(520);
-
-  await tween(visuals, { roomLight: 1, duration: 0.95, ease: 'power1.inOut' });
-  await delay(480);
-
+  // Lights come up while the tape leaves the rail, and the camera heads home
+  // while it drops back into the crate — one continuous move, not four.
   playSound('eject');
+  const lights = tween(visuals, { roomLight: 1, duration: pace(0.6), ease: 'power1.inOut' });
   if (handle) {
     cameraFollow.id = insertedId;
     cameraFollow.active = true;
     await ejectOffRail(handle.group);
-    await delay(420);
-    await returnToCrate(handle.group, handle.home);
     cameraFollow.active = false;
     cameraFollow.id = null;
+    await Promise.all([
+      returnToCrate(handle.group, handle.home),
+      tween(cameraRig, { ...getCatalogCam(), duration: pace(0.85), ease: 'power2.inOut' }),
+      tween(cameraFit, { amount: 1, duration: pace(0.85), ease: 'power2.inOut' }),
+      lights,
+    ]);
+  } else {
+    await Promise.all([
+      tween(cameraRig, { ...getCatalogCam(), duration: pace(0.85), ease: 'power2.inOut' }),
+      tween(cameraFit, { amount: 1, duration: pace(0.85), ease: 'power2.inOut' }),
+      lights,
+    ]);
   }
 
-  setState({ insertedId: null, slideIndex: 0, photoReady: false });
-  retainPhotos(new Set());
-  await tween(cameraRig, { ...getCatalogCam(), duration: 0.9, ease: 'power2.inOut' });
+  finishEject();
   setState({ mode: 'CATALOG', isPlaying: false });
+}
+
+function finishEject(): void {
+  setState({ insertedId: null, slideIndex: 0, photoReady: false, photoError: false });
+  retainPhotos(new Set());
 }
 
 async function switchCartridge(nextId: string): Promise<void> {
@@ -647,7 +705,10 @@ export async function requestEject(): Promise<void> {
   }
 }
 
-export async function changeSlide(direction: number): Promise<void> {
+export async function changeSlide(
+  direction: number,
+  cause: 'user' | 'auto' = 'user',
+): Promise<void> {
   const { insertedId, slideIndex, mode } = getState();
   if (!insertedId || slideLock || sequenceLock) return;
   if (mode !== 'PLAYING' && mode !== 'PAUSED') return;
@@ -657,6 +718,7 @@ export async function changeSlide(direction: number): Promise<void> {
   const step: 1 | -1 = direction < 0 ? -1 : 1;
   const next = slideIndex + step;
   if (next < 0 || next >= col.photos.length) return;
+  if (cause === 'user' && step === 1) markAdvanced();
 
   slideLock = true;
   clearAutoplay();
@@ -675,7 +737,7 @@ export async function changeSlide(direction: number): Promise<void> {
         void dockMagazineAtIndex(magId, next, true, SLIDE_TRANSITION.magazineDuration);
       },
       onSwap: () => {
-        setState({ slideIndex: next, photoReady: false });
+        setState({ slideIndex: next, photoReady: false, photoError: false });
         persistSlide(insertedId, next);
         const keep = preloadWindow(insertedId, next);
         retainPhotos(keep);
@@ -717,13 +779,13 @@ export function togglePause(): void {
   scheduleAutoplay();
 }
 
-export async function restartCollection(): Promise<void> {
+export async function restartCollection(opts?: { play?: boolean }): Promise<void> {
   const { insertedId, slideIndex, mode, isPlaying } = getState();
   if (!insertedId || sequenceLock || slideLock) return;
   if (mode !== 'PLAYING' && mode !== 'PAUSED') return;
   if (slideIndex <= 0) return;
 
-  const wasPlaying = isPlaying;
+  const wasPlaying = opts?.play ? true : isPlaying;
   slideLock = true;
   clearAutoplay();
   setState({ mode: 'REWINDING', isPlaying: false });
@@ -748,7 +810,7 @@ export async function restartCollection(): Promise<void> {
       onMechanical: () =>
         dockMagazineAtIndex(magId, 0, true, duration, 'power1.inOut'),
       onSwap: () => {
-        setState({ slideIndex: 0, photoReady: false });
+        setState({ slideIndex: 0, photoReady: false, photoError: false });
         persistSlide(insertedId, 0);
         void waitForCurrentPhoto(insertedId, 0);
       },

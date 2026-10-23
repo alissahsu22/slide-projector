@@ -1,5 +1,6 @@
 import gsap from 'gsap';
 import { playRewindClacks, playSound } from '../audio/sounds';
+import { prefersReducedMotion } from '../lib/motion';
 import { visuals } from './visuals';
 
 export type ProjectionTransitionPhase =
@@ -184,6 +185,12 @@ function applySlideFramePose(index: number): void {
 
 function applyAppearPose(index: number, direction: 1 | -1): void {
   const land = slideLandPose(index);
+  if (prefersReducedMotion()) {
+    // The new memory lands where it rests: no sideways jump, tilt or zoom.
+    applySlideFramePose(index);
+    visuals.blur = SLIDE_TRANSITION.settleBlur * 0.5;
+    return;
+  }
   const {
     settleOffset,
     settleRotation,

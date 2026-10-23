@@ -3,13 +3,14 @@ import {
   magazineLength,
   magazineWidth,
 } from '../scene/magazineLayout';
+import { publicUrl } from '../lib/publicUrl';
 
 /** Scene layout constants — meters, world space unless noted as local. */
 export const TABLE_TOP = 0.735;
 
 /** Sketchfab GLB — model-space units before uniform scale + Y rotation. */
 export const PROJECTOR_MODEL = {
-  url: '/models/projector.glb',
+  url: publicUrl('models/projector.glb'),
   scale: 0.00135,
   minY: 1.99746,
   /** +90° Y turns the lens from +X toward the wall (−Z). */
