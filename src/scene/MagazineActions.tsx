@@ -1,4 +1,5 @@
 import { Billboard, useCursor } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
 import gsap from 'gsap';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
@@ -20,6 +21,16 @@ const BAR_LIFT = BTN_H / 2;
  * stops short of the tape (POP_ABOVE) and doesn't widen into the EDIT key.
  */
 const HIT_REACH_DOWN = BTN_H * 0.6;
+/**
+ * However small the camera draws the key, its hit area stays at least this tall
+ * on screen (over the 44px touch guideline), with a little to spare above the
+ * face. Anything still missing grows upward, away from the tape and EDIT.
+ */
+const MIN_HIT_PX = 48;
+const HIT_PAD_UP_PX = 6;
+
+const _top = new THREE.Vector3();
+const _bottom = new THREE.Vector3();
 
 function drawActionFace(
   label: string,
@@ -75,6 +86,8 @@ type ActionButtonProps = {
 function ActionButton({ label, idle, hoverTex, position, onPress }: ActionButtonProps) {
   const [hover, setHover] = useState(false);
   const hoverOk = useRef(false);
+  const face = useRef<THREE.Mesh>(null);
+  const hit = useRef<THREE.Mesh>(null);
   useCursor(hover, 'pointer');
   const texture = hover ? hoverTex : idle;
 
@@ -85,6 +98,24 @@ function ActionButton({ label, idle, hoverTex, position, onPress }: ActionButton
     }, 480);
     return () => window.clearTimeout(id);
   }, []);
+
+  useFrame(({ camera, size }) => {
+    const f = face.current;
+    const h = hit.current;
+    if (!f || !h) return;
+    f.updateWorldMatrix(true, false);
+    _top.set(0, BTN_H / 2, 0).applyMatrix4(f.matrixWorld).project(camera);
+    _bottom.set(0, -BTN_H / 2, 0).applyMatrix4(f.matrixWorld).project(camera);
+    const facePx = Math.abs(_top.y - _bottom.y) * 0.5 * size.height;
+    if (!(facePx > 0.5)) return;
+    const unitsPerPx = BTN_H / facePx;
+    const up = Math.max(
+      HIT_PAD_UP_PX * unitsPerPx,
+      MIN_HIT_PX * unitsPerPx - BTN_H - HIT_REACH_DOWN,
+    );
+    h.scale.set(BTN_W, BTN_H + HIT_REACH_DOWN + up, 1);
+    h.position.y = (up - HIT_REACH_DOWN) / 2;
+  });
 
   return (
     <group
@@ -105,8 +136,10 @@ function ActionButton({ label, idle, hoverTex, position, onPress }: ActionButton
       }}
     >
       {/* Transparent so it joins the pass the screen's layers draw in, and a high
-          renderOrder puts it last there. No depth test, so nothing can hide it. */}
-      <mesh renderOrder={1000}>
+          renderOrder puts it last there. No depth test, so nothing can hide it.
+          The hit mesh below covers it and takes the pointer alone, so the two
+          never trade hover back and forth. */}
+      <mesh ref={face} renderOrder={1000} raycast={() => null}>
         <planeGeometry args={[BTN_W, BTN_H]} />
         <meshBasicMaterial
           map={texture}
@@ -117,9 +150,14 @@ function ActionButton({ label, idle, hoverTex, position, onPress }: ActionButton
           depthWrite={false}
         />
       </mesh>
-      {/* After the face, which GuideAnchor measures as the first mesh. */}
-      <mesh position={[0, -HIT_REACH_DOWN / 2, 0]}>
-        <planeGeometry args={[BTN_W, BTN_H + HIT_REACH_DOWN]} />
+      {/* After the face, which GuideAnchor measures as the first mesh. Sized
+          each frame from a unit plane. */}
+      <mesh
+        ref={hit}
+        position={[0, -HIT_REACH_DOWN / 2, 0]}
+        scale={[BTN_W, BTN_H + HIT_REACH_DOWN, 1]}
+      >
+        <planeGeometry args={[1, 1]} />
         <meshBasicMaterial
           transparent
           opacity={0}
