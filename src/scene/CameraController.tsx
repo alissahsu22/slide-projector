@@ -1,8 +1,18 @@
 import { OrbitControls } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useCallback, useLayoutEffect, useRef } from 'react';
-import { PerspectiveCamera, Vector3 } from 'three';
-import { fitPoseToAspect, getCatalogCam, type CameraPose } from '../experience/layout';
+import { PerspectiveCamera, Vector3, type Camera } from 'three';
+import {
+  CRATE,
+  CRATE_MAGAZINE,
+  crateRig,
+  crateMagazineWorld,
+  crateSlotCount,
+  fitPoseToAspect,
+  getCatalogCam,
+  MAGAZINE_HOVER_LIFT,
+  type CameraPose,
+} from '../experience/layout';
 import { sceneApi } from '../experience/sceneApi';
 import { getPlaybackCam } from '../experience/playbackFrame';
 import { cameraFit, cameraFollow, cameraRig } from '../experience/visuals';
@@ -20,6 +30,53 @@ const FOLLOW = {
 };
 
 const _followPos = new Vector3();
+const _keyTop = new Vector3();
+
+/**
+ * How far a chosen tape's PLAY key tops out above the tape: the pop, the key and
+ * the chosen tape's lift and tilt. Measured against the rendered key.
+ */
+const KEY_ABOVE = 0.05;
+/** Half the width of a PLAY + EDIT pair, so a key that overhangs its tape counts. */
+const KEYS_HALF_W = 0.016;
+/** Screen gap kept between the toolbar's bottom edge and a PLAY key. */
+const TOOLBAR_GAP_PX = 10;
+
+/**
+ * Pixels the crate's PLAY keys would sit under the toolbar. Short landscape
+ * phones stretch the toolbar across the top of a frame that is only ~320px
+ * tall, right where a chosen tape's key pops up. Measured from the lens
+ * without any shift, over the slots that hold tapes.
+ */
+function toolbarOverlap(camera: Camera, width: number, height: number, shift: number): number {
+  const s = getState();
+  const tapes = s.collectionIds.length;
+  if (!tapes) return 0;
+  const bar = document.querySelector('.top-bar')?.getBoundingClientRect();
+  if (!bar || bar.height === 0) return 0;
+  const count = crateSlotCount(s.capacity, tapes);
+  const first = crateMagazineWorld(0, count);
+  const last = crateMagazineWorld(tapes - 1, count);
+  const y = crateRig.y + CRATE.floor + CRATE_MAGAZINE.height + MAGAZINE_HOVER_LIFT + KEY_ABOVE;
+  const cos = Math.cos(crateRig.ry);
+  const sin = Math.sin(crateRig.ry);
+  let left = Infinity;
+  let right = -Infinity;
+  let top = Infinity;
+  for (const [tape, dx] of [
+    [first, -KEYS_HALF_W],
+    [last, KEYS_HALF_W],
+  ] as const) {
+    _keyTop.set(tape.x + dx * cos, y, tape.z - dx * sin).project(camera);
+    if (_keyTop.z > 1) return 0;
+    const sx = (_keyTop.x * 0.5 + 0.5) * width;
+    left = Math.min(left, sx);
+    right = Math.max(right, sx);
+    top = Math.min(top, (-_keyTop.y * 0.5 + 0.5) * height - shift);
+  }
+  if (bar.right < left || bar.left > right) return 0;
+  return Math.max(0, bar.bottom + TOOLBAR_GAP_PX - top);
+}
 const _blend: CameraPose = { px: 0, py: 0, pz: 0, tx: 0, ty: 0, tz: 0, fov: 40, minDolly: 0 };
 const _goal: CameraPose = { ..._blend };
 
@@ -61,6 +118,9 @@ export function CameraController() {
   // resize must not snap the camera back to the catalog or overview shot.
   const getThree = useThree((s) => s.get);
   const lastFov = useRef(cameraRig.fov);
+  // Lens shift (px) that slides the catalog shot down clear of the toolbar.
+  const shift = useRef(0);
+  const shiftApplied = useRef({ px: 0, width: 0, height: 0 });
   const orbitInspect = useExperience((s) => s.orbitInspect);
 
   const applyPose = useCallback(
@@ -90,8 +150,39 @@ export function CameraController() {
     applyPose(ORBIT_OVERVIEW, width / height);
   }, [orbitInspect, applyPose, getThree]);
 
+  /**
+   * Shifts the image rather than moving the camera, so the authored shot keeps
+   * its angle and the room just slides down the screen. Only the catalog shot
+   * needs it; flights ease it out with the fit.
+   */
+  const clearToolbar = useCallback(
+    (width: number, height: number, delta: number) => {
+      if (!(camera instanceof PerspectiveCamera)) return;
+      const s = getState();
+      let target = 0;
+      if (s.mode === 'CATALOG' && !s.orbitInspect && cameraFit.amount > 0) {
+        camera.updateMatrixWorld();
+        target = toolbarOverlap(camera, width, height, shiftApplied.current.px) * cameraFit.amount;
+      }
+      const k = prefersReducedMotion() ? 1 : 1 - Math.exp(-delta * 6);
+      shift.current += (target - shift.current) * k;
+      if (Math.abs(target - shift.current) < 0.25) shift.current = target;
+
+      const applied = shiftApplied.current;
+      const px = Math.round(shift.current * 4) / 4;
+      if (px === applied.px && width === applied.width && height === applied.height) return;
+      if (px > 0) camera.setViewOffset(width, height, 0, -px, width, height);
+      else camera.clearViewOffset();
+      shiftApplied.current = { px, width, height };
+    },
+    [camera],
+  );
+
   useFrame((state, delta) => {
-    if (getState().orbitInspect) return;
+    if (getState().orbitInspect) {
+      clearToolbar(state.size.width, state.size.height, delta);
+      return;
+    }
 
     if (cameraFollow.active && cameraFollow.id) {
       const handle = sceneApi.cartridges.get(cameraFollow.id);
@@ -126,6 +217,7 @@ export function CameraController() {
     }
 
     applyPose(cameraRig, state.size.width / state.size.height, cameraFit.amount);
+    clearToolbar(state.size.width, state.size.height, delta);
   }, -2);
 
   if (!orbitInspect) return null;
