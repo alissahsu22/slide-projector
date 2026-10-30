@@ -1282,6 +1282,7 @@ canvas {
   text-transform: uppercase;
   color: var(--gold);
   text-shadow: var(--hud-glow);
+  text-wrap: balance;
 }
 
 .intro-eyebrow::before,
@@ -1303,6 +1304,7 @@ canvas {
   line-height: 1.05;
   text-transform: uppercase;
   color: var(--paper);
+  text-wrap: balance;
   text-shadow:
     0 0 18px rgba(232, 197, 107, 0.35),
     var(--hud-glow);
@@ -1820,6 +1822,7 @@ canvas {
   font-size: var(--text-md);
   line-height: 1.35;
   color: var(--paper);
+  text-wrap: balance;
 }
 
 .playback-hint .guide-skip {
