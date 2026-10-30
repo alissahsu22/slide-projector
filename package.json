@@ -9,7 +9,8 @@
     "models": "node scripts/optimize-models.mjs",
     "photos": "node scripts/optimize-photos.mjs",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.8",
@@ -28,6 +29,7 @@
     "@vitejs/plugin-react": "^6.0.4",
     "oxlint": "^1.75.0",
     "typescript": "~6.0.2",
-    "vite": "^8.2.0"
+    "vite": "^8.2.0",
+    "vitest": "5.0.5"
   }
 }
