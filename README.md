@@ -9,6 +9,17 @@ npm install
 npm run dev
 ```
 
+## Check
+
+```bash
+npm run lint
+npx tsc -b
+npm test
+npm run build
+```
+
+CI runs the same four on every push to `main` and on pull requests. The tests cover the pure logic: camera framing per window shape, crate slots and capacity, where hints go, and the guide's progression.
+
 ## Swap in your own photos
 
 Built-in tapes live in `src/data/collections.ts` and their files live in `public/photos/`. Use `npm run photos -- <source-folder> public/photos/<id> <id>` to write 1920px WebP slides and 320px film-window thumbs.

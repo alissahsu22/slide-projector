@@ -101,6 +101,9 @@ export function PlaybackControls() {
   const atEnd = slideIndex >= total - 1;
   const ended = atEnd && !isPlaying;
   const hintNext = guideStep === 'next';
+  // Narrow screens carry the note inline here instead of in the floating
+  // callout, which stays mounted (hidden) as #explore-hint.
+  const hintId = inlineHint ? 'playback-hint' : 'explore-hint';
 
   return (
     <div className={`playback ${busy ? 'is-busy' : ''}`} role="region" aria-label="Tape controls">
@@ -128,7 +131,7 @@ export function PlaybackControls() {
         !photoReady && <p className="playback-note">Loading this memory…</p>
       )}
       {inlineHint && (
-        <div className="playback-hint" id="explore-hint" role="status">
+        <div className="playback-hint" id="playback-hint" role="status">
           <p>{GUIDE_COPY.next}</p>
           <button type="button" className="guide-skip" onClick={() => skipGuide()}>
             Skip hints
@@ -141,7 +144,7 @@ export function PlaybackControls() {
             type="button"
             className={`is-icon${hintNext && !atStart ? ' guide-target' : ''}`}
             aria-label="Previous"
-            aria-describedby={hintNext ? 'explore-hint' : undefined}
+            aria-describedby={hintNext ? hintId : undefined}
             disabled={busy || atStart}
             onClick={() => void changeSlide(-1)}
           >
@@ -163,7 +166,7 @@ export function PlaybackControls() {
               type="button"
               className={`is-icon${hintNext ? ' guide-target' : ''}`}
               aria-label="Next"
-              aria-describedby={hintNext ? 'explore-hint' : undefined}
+              aria-describedby={hintNext ? hintId : undefined}
               disabled={busy || atEnd}
               onClick={() => void changeSlide(1)}
             >
