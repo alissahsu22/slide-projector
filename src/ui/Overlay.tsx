@@ -23,48 +23,6 @@ function SpeakerIcon({ muted }: { muted: boolean }) {
   );
 }
 
-/* 8x8 pixel glyphs drawn as rects so they stay crisp next to Pixelify. */
-function EyeIcon() {
-  return (
-    <svg viewBox="0 0 8 8" aria-hidden="true" focusable="false">
-      <rect x="2" y="2" width="4" height="1" />
-      <rect x="1" y="3" width="1" height="2" />
-      <rect x="6" y="3" width="1" height="2" />
-      <rect x="3" y="3" width="2" height="2" />
-      <rect x="2" y="5" width="4" height="1" />
-    </svg>
-  );
-}
-
-function ShelfIcon() {
-  return (
-    <svg viewBox="0 0 8 8" aria-hidden="true" focusable="false">
-      <rect x="1" y="1" width="1" height="3" />
-      <rect x="3" y="2" width="1" height="2" />
-      <rect x="5" y="1" width="2" height="3" />
-      <rect x="0" y="4" width="8" height="1" />
-      <rect x="1" y="5" width="1" height="2" />
-      <rect x="6" y="5" width="1" height="2" />
-    </svg>
-  );
-}
-
-function CloseIcon() {
-  return (
-    <svg viewBox="0 0 8 8" aria-hidden="true" focusable="false">
-      <rect x="1" y="1" width="1" height="1" />
-      <rect x="2" y="2" width="1" height="1" />
-      <rect x="3" y="3" width="2" height="2" />
-      <rect x="5" y="2" width="1" height="1" />
-      <rect x="6" y="1" width="1" height="1" />
-      <rect x="2" y="5" width="1" height="1" />
-      <rect x="1" y="6" width="1" height="1" />
-      <rect x="5" y="5" width="1" height="1" />
-      <rect x="6" y="6" width="1" height="1" />
-    </svg>
-  );
-}
-
 /** One line for the shelf: what the selected tape will do, or how moving works. */
 function curationHint(opts: {
   selected: Collection | undefined;
@@ -130,12 +88,11 @@ export function Overlay() {
         <div className="top-bar-utility">
           <button
             type="button"
-            className="hud-link help-toggle"
-            aria-label="How to explore"
+            className="hud-link"
             aria-haspopup="dialog"
             onClick={() => setHelpOpen(true)}
           >
-            ?
+            Help
           </button>
           <button
             type="button"
@@ -172,8 +129,7 @@ export function Overlay() {
                 toggleOrbitInspect();
               }}
             >
-              {orbitInspect ? <CloseIcon /> : <EyeIcon />}
-              <span>{orbitInspect ? 'Exit view' : 'View room'}</span>
+              {orbitInspect ? 'Exit view' : 'View room'}
             </button>
             {!curating && !orbitInspect && (
               <button
@@ -189,8 +145,7 @@ export function Overlay() {
                 }
                 onClick={() => void enterCuration()}
               >
-                <ShelfIcon />
-                <span>Open shelf</span>
+                Open shelf
               </button>
             )}
             {curating && (
@@ -199,8 +154,7 @@ export function Overlay() {
                 className="hud-action curation-done"
                 onClick={() => void exitCuration()}
               >
-                <CloseIcon />
-                <span>Done</span>
+                Done
               </button>
             )}
           </div>

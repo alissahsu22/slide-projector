@@ -290,16 +290,11 @@ canvas {
     color 0.18s ease;
 }
 
-.hud-action svg,
 .music-toggle svg {
   width: 1.05rem;
   height: 1.05rem;
   flex-shrink: 0;
   shape-rendering: crispEdges;
-}
-
-.hud-action svg rect {
-  fill: currentColor;
 }
 
 .hud-action:not(:disabled):hover {
@@ -1660,12 +1655,6 @@ canvas {
     font-size: var(--machine-sm);
   }
 
-  /* The label already says what the key does; the glyph is the first thing
-     to go when a phone runs out of toolbar. */
-  .hud-action svg {
-    display: none;
-  }
-
   .top-bar-actions {
     margin-left: 0.3rem;
     padding-left: 0.3rem;
@@ -1726,12 +1715,6 @@ canvas {
   height: 1px;
   overflow: hidden;
   clip-path: inset(50%);
-}
-
-.help-toggle {
-  min-width: 2.75rem;
-  padding: 0;
-  font-size: var(--machine-lg);
 }
 
 .album-key.is-wide {
